@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.*
+*.log
+*.pem
+*.key
+.DS_Store
+Thumbs.db
+*.bak.*
+.ftitos-cc-manifest.json

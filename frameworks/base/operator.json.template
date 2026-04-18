@@ -1,0 +1,36 @@
+{
+  "version": "2.0",
+  "operator": "<YOUR_NAME>",
+  "email": "<YOUR_EMAIL>",
+  "created": "<YYYY-MM-DD>",
+  "completed_at": null,
+  "profile": {
+    "deep_why": {
+      "completed_at": null,
+      "answers": []
+    },
+    "north_star": {
+      "completed_at": null,
+      "metric": null,
+      "timeframe": null
+    },
+    "key_values": {
+      "completed_at": null,
+      "values": []
+    },
+    "elevator_pitch": {
+      "completed_at": null,
+      "floors": {
+        "1": null,
+        "2": null,
+        "3": null,
+        "4": null
+      }
+    },
+    "surface_vision": {
+      "completed_at": null,
+      "scenes": []
+    }
+  },
+  "note": "Run /base:orientation to complete operator profile sections."
+}

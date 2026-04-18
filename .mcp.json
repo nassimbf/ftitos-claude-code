@@ -1,0 +1,53 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "description": "Up-to-date library documentation and code examples"
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "description": "Persistent knowledge graph for cross-session memory"
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "description": "Multi-step reasoning and problem decomposition"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-playwright"],
+      "description": "Browser automation for E2E testing and visual QA"
+    },
+    "deepwiki": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-deepwiki"],
+      "description": "GitHub repository documentation explorer"
+    },
+    "gbrain": {
+      "command": "node",
+      "args": ["$HOME/.gbrain/mcp-server.js"],
+      "description": "WHO+WHY engine — people, companies, decisions",
+      "optional": true
+    },
+    "graphify": {
+      "command": "node",
+      "args": ["$HOME/.graphify/mcp-server.js"],
+      "description": "WHAT+HOW engine — concepts, research, Obsidian integration",
+      "optional": true
+    },
+    "gitnexus": {
+      "command": "node",
+      "args": ["$HOME/.gitnexus/mcp-server.js"],
+      "description": "WHERE+IMPACT engine — code structure, blast radius, knowledge graph",
+      "optional": true
+    },
+    "engram": {
+      "command": "node",
+      "args": ["$HOME/.engram/mcp-server.js"],
+      "description": "LEARNED engine — session memory, observations, learnings",
+      "optional": true
+    }
+  }
+}

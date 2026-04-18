@@ -1,0 +1,41 @@
+{
+  "name": "ftitos-claude-code",
+  "version": "1.0.0",
+  "description": "Production-grade Claude Code setup with autonomous sprint pipeline, 4-brain memory, and 7-specialist review army",
+  "main": "scripts/install-apply.js",
+  "bin": {
+    "ftitos-cc": "./install.sh"
+  },
+  "scripts": {
+    "install": "node scripts/install-apply.js",
+    "uninstall": "node scripts/uninstall.js",
+    "doctor": "node scripts/doctor.js",
+    "test": "node tests/run-all.js",
+    "validate:agents": "node scripts/ci/validate-agents.js",
+    "validate:skills": "node scripts/ci/validate-skills.js",
+    "validate:hooks": "node scripts/ci/validate-hooks.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ftitos/ftitos-claude-code.git"
+  },
+  "keywords": [
+    "claude-code",
+    "ai-agents",
+    "developer-tools",
+    "autonomous-pipeline",
+    "code-review",
+    "tdd",
+    "mcp",
+    "ai-memory"
+  ],
+  "author": "Ftitos <nessim.ben.ftita@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ftitos/ftitos-claude-code/issues"
+  },
+  "homepage": "https://github.com/ftitos/ftitos-claude-code#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

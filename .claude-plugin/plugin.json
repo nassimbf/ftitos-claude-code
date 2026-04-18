@@ -1,0 +1,14 @@
+{
+  "name": "ftitos-claude-code",
+  "version": "1.0.0",
+  "description": "Production-grade Claude Code setup with autonomous pipeline and 4-brain memory",
+  "author": "Ftitos",
+  "license": "MIT",
+  "components": {
+    "agents": 20,
+    "skills": 40,
+    "rules": 16,
+    "hooks": 25,
+    "commands": 11
+  }
+}

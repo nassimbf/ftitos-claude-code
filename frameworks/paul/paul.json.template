@@ -1,0 +1,25 @@
+{
+  "name": "<PROJECT_NAME>",
+  "version": "0.0.0",
+  "milestone": {
+    "name": "<MILESTONE_NAME>",
+    "version": "0.1.0",
+    "status": "not_started"
+  },
+  "phase": {
+    "number": 0,
+    "name": "<FIRST_PHASE_NAME>",
+    "status": "not_started"
+  },
+  "loop": {
+    "plan": null,
+    "position": "IDLE"
+  },
+  "timestamps": {
+    "created_at": null,
+    "updated_at": null
+  },
+  "satellite": {
+    "groom": true
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "project": {
+    "name": "",
+    "version": "0.1.0",
+    "description": ""
+  },
+  "sprint": {
+    "current": null,
+    "phase": "VALIDATE",
+    "phases": [
+      "VALIDATE",
+      "PLAN",
+      "BUILD",
+      "REVIEW",
+      "TEST",
+      "SHIP",
+      "MONITOR"
+    ]
+  },
+  "gates": {
+    "plan_approved": false,
+    "uat_approved": false,
+    "ship_approved": false
+  },
+  "coverage": {
+    "target": 80,
+    "current": 0
+  },
+  "tasks": []
+}

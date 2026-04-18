@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Run tests
+        run: node tests/run-all.js
+
+      - name: Validate agents
+        run: node scripts/ci/validate-agents.js
+
+      - name: Validate skills
+        run: node scripts/ci/validate-skills.js
+
+      - name: Validate hooks
+        run: node scripts/ci/validate-hooks.js

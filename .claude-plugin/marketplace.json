@@ -1,0 +1,38 @@
+{
+  "name": "ftitos-claude-code",
+  "displayName": "Ftitos Claude Code Harness",
+  "version": "1.0.0",
+  "description": "Production-grade Claude Code configuration with autonomous sprint pipeline, multi-specialist code review, 4-brain memory system, and 25 behavioral hooks.",
+  "author": {
+    "name": "Ftitos",
+    "url": "https://github.com/ftitos"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/ftitos/ftitos-claude-code",
+  "tags": [
+    "claude-code",
+    "ai-agents",
+    "autonomous-pipeline",
+    "code-review",
+    "tdd",
+    "mcp",
+    "memory",
+    "developer-tools"
+  ],
+  "categories": [
+    "developer-tools",
+    "ai-agents",
+    "workflow-automation"
+  ],
+  "requirements": {
+    "claude-code": ">=1.0.0",
+    "node": ">=18.0.0"
+  },
+  "install": {
+    "command": "./install.sh",
+    "flags": ["--dry-run", "--force"]
+  },
+  "uninstall": {
+    "command": "node scripts/uninstall.js"
+  }
+}
