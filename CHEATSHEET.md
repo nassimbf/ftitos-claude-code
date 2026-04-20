@@ -137,6 +137,20 @@ ship                                  # Gate 3: push to production
 /project:sprint status                # Current phase details
 ```
 
+### Skills by Pipeline Phase
+
+Which skills activate in which phase of the sprint pipeline:
+
+| Phase | Skills |
+|-------|--------|
+| **VALIDATE** | `product-lens`, `idea-refine`, `search-first` |
+| **PLAN** | `spec-driven-development`, `brainstorming`, `context-engineering` |
+| **BUILD** | `incremental-implementation`, `tdd-workflow`, `source-driven-development`, `ui-ux-pro-max`, `coding-standards` |
+| **REVIEW** | `code-review`, `code-simplification`, `security-review` |
+| **TEST** | `verification-loop`, `e2e-testing`, `python-testing`, `debugging-and-error-recovery` |
+| **SHIP** | `git-workflow`, `deployment-patterns` |
+| **MONITOR** | `canary-watch`, `browser-qa` |
+
 ---
 
 ## 3. Every Command

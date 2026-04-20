@@ -91,6 +91,7 @@ See [guides/architecture.md](guides/architecture.md) for the full system design.
 | [guides/architecture.md](guides/architecture.md) | Full system design, component relationships, data flow |
 | [guides/brain-system.md](guides/brain-system.md) | 4-brain MCP setup, routing, and usage |
 | [guides/customization.md](guides/customization.md) | Adding agents, skills, rules, and hooks |
+| [guides/skill-anatomy.md](guides/skill-anatomy.md) | Standard structure for writing skills (sections, anti-rationalization, verification) |
 | [guides/hackathon-playbook.md](guides/hackathon-playbook.md) | Speed-run setup for time-constrained events |
 | [frameworks/README.md](frameworks/README.md) | BASE, PAUL, Aegis, and CARL framework details |
 
