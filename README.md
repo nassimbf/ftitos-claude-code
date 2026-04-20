@@ -6,7 +6,7 @@ A Claude Code configuration that runs a project from first commit to deployed an
 
 ## What it does
 
-Claude Code ships with a good base, but no structure around how it plans, reviews, tests, or ships. This project provides that structure: 20 specialist agents, 40 skills, 15 behavioral rules, and a lifecycle hook system — all installed into `~/.claude/` with one command.
+Claude Code ships with a good base, but no structure around how it plans, reviews, tests, or ships. This project provides that structure: 20 specialist agents, 48 skills, 15 behavioral rules, and a lifecycle hook system — all installed into `~/.claude/` with one command.
 
 Start a feature with `/project:sprint validate`. Claude validates scope, writes a plan, gets your approval (Gate 1), builds autonomously, runs 7 parallel code reviewers, executes tests, asks you to do UAT (Gate 2), ships, then confirms the push (Gate 3). The three gates are the only manual steps.
 
@@ -31,7 +31,7 @@ npm run doctor
 Expected output from `doctor`:
 ```
 [OK] 20 agents loaded
-[OK] 40 skills loaded
+[OK] 48 skills loaded
 [OK] 15 rules loaded
 [OK] 14 hooks registered
 [OK] 11 commands available
@@ -78,7 +78,7 @@ See [guides/architecture.md](guides/architecture.md) for the full system design.
 - **Anti-slop enforcement** — 17-item behavioral rule that blocks generic AI output patterns (gradient backgrounds, copy clichés, meaningless abstractions) before they reach output.
 - **Context survival** — auto-checkpoint before compaction, auto-recovery after. Session context survives `claude --compact`.
 - **20 specialist agents** — architect, security-reviewer, tdd-guide, debugger, refactor-cleaner, and 15 others. Each has a focused role and dispatch conditions.
-- **40 skills** — covering TDD, architecture patterns, agentic engineering, deployment, context management, and language-specific conventions.
+- **48 skills** — covering TDD, architecture patterns, agentic engineering, deployment, context management, design intelligence, and language-specific conventions.
 - **15 behavioral rules** — coding style, git workflow, testing discipline, security pre-commit checklist, agent usage, and more. All enforced via hooks and rule files.
 
 ---
@@ -98,7 +98,7 @@ See [guides/architecture.md](guides/architecture.md) for the full system design.
 
 ## Credits
 
-This project builds on 7 open-source projects. Nothing here was invented from scratch.
+This project builds on 9 open-source projects. Nothing here was invented from scratch.
 
 | Source | Author | Role |
 |--------|--------|------|
@@ -109,6 +109,8 @@ This project builds on 7 open-source projects. Nothing here was invented from sc
 | [graphify](https://github.com/safishamsi/graphify) | Safi Shamsi | Concept mapping and knowledge graphs (WHAT + HOW engine, 7 MCP tools) |
 | [GitNexus](https://github.com/abhigyanpatwari/GitNexus) | Abhigyan Patwari | Code knowledge graphs, blast radius analysis, call chain tracing (WHERE + IMPACT engine, 16 MCP tools) |
 | [engram](https://github.com/Gentleman-Programming/engram) | Gentleman Programming | Persistent session memory with cross-session recall (LEARNED engine, 11 MCP tools) |
+| [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | nextlevelbuilder | UI/UX design intelligence — 344+ searchable design resources via BM25 engine (styles, colors, fonts, UX rules) |
+| [agent-skills](https://github.com/addyosmani/agent-skills) | Addy Osmani | Engineering workflow skills — source-driven development, context engineering, debugging triage, spec-driven development, idea refinement |
 
 ---
 

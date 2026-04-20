@@ -3,7 +3,7 @@
 ## General
 
 **Q: What is ftitos-claude-code?**
-A configuration bundle for Claude Code CLI that adds 20 agents, 40 skills, 15 rules, and 25 lifecycle hooks. It turns Claude Code into an autonomous engineering pipeline: one command (`/project:sprint validate`) runs a project from validation through shipping with only 3 human checkpoints.
+A configuration bundle for Claude Code CLI that adds 20 agents, 48 skills, 15 rules, and 25 lifecycle hooks. It turns Claude Code into an autonomous engineering pipeline: one command (`/project:sprint validate`) runs a project from validation through shipping with only 3 human checkpoints.
 
 **Q: Do I need Claude Pro / Teams / Enterprise?**
 You need Claude Code CLI access. Any plan that includes Claude Code works.

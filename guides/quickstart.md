@@ -39,7 +39,7 @@ When it finishes, you should see:
 
 ```
 [OK] 20 agents installed
-[OK] 40 skills installed
+[OK] 48 skills installed
 [OK] 12 common rules installed
 [OK] 25 hooks installed
 [OK] 10 pipeline commands installed

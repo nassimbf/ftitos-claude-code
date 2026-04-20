@@ -40,7 +40,7 @@ graph TB
         SK1[TDD workflow]
         SK2[Code review]
         SK3[Brain queries]
-        SK4[...37 more skills]
+        SK4[...45 more skills]
     end
 
     subgraph "Rule Layer"
@@ -152,7 +152,7 @@ Agent definitions live in `agents/`. Each agent is a Markdown file with:
 
 ### 3. Skill Layer
 
-40 skills that provide workflow automations triggered by slash commands.
+48 skills that provide workflow automations triggered by slash commands.
 
 Each skill is a directory containing:
 

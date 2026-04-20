@@ -1,6 +1,6 @@
 # ftitos-claude-code — The Complete Cheat Sheet
 
-> **Version 1.0.0** | 20 Agents | 40 Skills | 15 Rules | 25 Hooks | 4 Frameworks | 4 Brain Engines
+> **Version 1.0.0** | 20 Agents | 48 Skills | 15 Rules | 25 Hooks | 4 Frameworks | 4 Brain Engines
 >
 > One-command install. 3 human gates. Everything else autonomous.
 
@@ -69,7 +69,7 @@ npm run test         # Run test suite
 Expected output:
 ```
 [OK] 20 agents loaded
-[OK] 40 skills loaded
+[OK] 48 skills loaded
 [OK] 15 rules loaded
 [OK] 25 hooks registered
 [OK] 10+ commands available
@@ -259,7 +259,7 @@ ship                                  # Gate 3: push to production
 | `docker-patterns` | Auto | Compose for dev, multi-stage Dockerfiles, networking, container security |
 | `frontend-patterns` | Auto | React composition, custom hooks, context + reducer, virtualization |
 
-#### Testing & Quality (8)
+#### Testing & Quality (10)
 
 | Skill | Invoke | What It Does |
 |-------|--------|-------------|
@@ -268,21 +268,28 @@ ship                                  # Gate 3: push to production
 | `python-testing` | Auto | pytest: fixtures, parametrize, markers, mocking, async, conftest |
 | `e2e-testing` | Auto | Playwright: Page Object Model, config, flaky test quarantine, CI/CD |
 | `code-review` | `/code-review` | Automated checks → focus areas → severity grouping → fix cycle |
+| `code-simplification` | Auto | Chesterton's Fence + Rule of 500: reduce complexity without changing behavior |
+| `debugging-and-error-recovery` | Auto | Stop-the-line triage: Reproduce → Localize → Reduce → Fix → Guard |
 | `eval-harness` | Auto | Eval-driven development: capability/regression evals, pass@k, graders |
 | `verification-loop` | `/verify` | Build → types → lint → tests → security → diff review |
 | `skill-comply` | Auto | Auto-generate scenarios, run agents, report compliance rates |
 
-#### Process & Workflow (7)
+#### Process & Workflow (12)
 
 | Skill | Invoke | What It Does |
 |-------|--------|-------------|
 | `brainstorming` | Auto | Idea → clarifying questions → 2-3 approaches → design doc → spec review |
+| `idea-refine` | Auto | Divergent/convergent thinking: expand variations → evaluate → sharpen into actionable one-pager |
+| `spec-driven-development` | Auto | Formal spec-before-code: 6 core areas, 4-phase gated workflow, assumption surfacing |
+| `incremental-implementation` | Auto | Thin vertical slices: implement → test → verify → commit → next. Scope discipline |
+| `source-driven-development` | Auto | Verify framework decisions against official docs. Citation rules, conflict surfacing |
 | `search-first` | Auto | Check npm/PyPI/GitHub/MCPs before building custom. Decision: adopt/extend/compose/build |
 | `deep-research` | Auto | 3-5 sub-questions, 15-30 sources, parallel subagents, cited reports |
 | `dispatching-parallel-agents` | Auto | 3+ independent problems → focused agent tasks → parallel dispatch → integrate |
 | `subagent-driven-development` | Auto | Plan → per-task builder dispatch → spec reviewer → code reviewer → done |
 | `continuous-learning-v2` | Auto | Session hooks → observations → pattern detection → instincts → evolution |
 | `strategic-compact` | Auto | Compact at phase boundaries, not mid-task. Token optimization patterns |
+| `context-engineering` | Auto | Agent context curation: what to load, when, hierarchy (rules → spec → source → errors) |
 
 #### Development Patterns (8)
 
@@ -305,11 +312,12 @@ ship                                  # Gate 3: push to production
 | `browser-qa` | Auto | Playwright smoke test, interaction test, visual regression, accessibility (axe-core) |
 | `cost-aware-llm-pipeline` | Auto | Model routing by complexity, budget tracking, retry logic, prompt caching |
 
-#### Product & Security (2)
+#### Product, Design & Security (3)
 
 | Skill | Invoke | What It Does |
 |-------|--------|-------------|
 | `product-lens` | Auto | Office hours (7 forcing questions), founder review, user journey audit, ICE scoring |
+| `ui-ux-pro-max` | Auto | BM25-searchable design DB: 50+ styles, 161 colors, 57 fonts, 99 UX rules, 16 stacks |
 | `security-review` | Auto | Secrets, input validation, SQL injection, auth, XSS, CSRF, rate limiting, deps |
 
 #### Onboarding & Documentation (2)
