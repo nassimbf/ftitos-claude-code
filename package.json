@@ -1,0 +1,40 @@
+{
+  "name": "ftitos-claude-code",
+  "version": "2.0.0",
+  "description": "Lean Claude Code setup: 23 agents, 24 skills, 9-phase pipeline, 7-specialist review army, 3 human gates",
+  "main": "scripts/install-apply.js",
+  "bin": {
+    "ftitos-cc": "./install.sh"
+  },
+  "scripts": {
+    "install": "node scripts/install-apply.js",
+    "uninstall": "node scripts/uninstall.js",
+    "doctor": "node scripts/doctor.js",
+    "test": "node tests/run-all.js",
+    "validate:agents": "node scripts/ci/validate-agents.js",
+    "validate:skills": "node scripts/ci/validate-skills.js",
+    "validate:hooks": "node scripts/ci/validate-hooks.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ftitos/ftitos-claude-code.git"
+  },
+  "keywords": [
+    "claude-code",
+    "ai-agents",
+    "developer-tools",
+    "autonomous-pipeline",
+    "code-review",
+    "tdd",
+    "mcp"
+  ],
+  "author": "Ftitos <nessim.ben.ftita@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ftitos/ftitos-claude-code/issues"
+  },
+  "homepage": "https://github.com/ftitos/ftitos-claude-code#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,42 @@
+# CONTEXT.md — BUILD Phase
+
+## Sprint
+
+- **Name**: [sprint name]
+- **Phase**: BUILD
+- **Started**: [date]
+
+## Objective
+
+[One sentence describing what this sprint delivers]
+
+## Plan Reference
+
+See PLAN.md for the approved implementation plan.
+
+## Tasks
+
+| # | Task | Status | Assignee |
+|---|------|--------|----------|
+| 1 | [task description] | pending | -- |
+| 2 | [task description] | pending | -- |
+
+## Architecture Decisions
+
+- [Decision 1]: [rationale]
+- [Decision 2]: [rationale]
+
+## Files Changed
+
+Track files modified during this sprint for review:
+
+- `path/to/file.ext` -- [what changed]
+
+## Test Coverage
+
+- Target: 80%
+- Current: --
+
+## Notes
+
+[Any blockers, discoveries, or context for the next agent]

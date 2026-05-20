@@ -1,0 +1,29 @@
+{
+  "config": {
+    "devmode": false,
+    "post_compact_gate": true,
+    "global_exclude": []
+  },
+  "domains": {
+    "GLOBAL": {
+      "state": "active",
+      "always_on": true,
+      "recall": ["universal"],
+      "exclude": [],
+      "rules": [],
+      "decisions": []
+    },
+    "DEVELOPMENT": {
+      "state": "active",
+      "always_on": false,
+      "recall": [
+        "code", "implement", "build", "debug", "test",
+        "python", "function", "class", "module", "refactor"
+      ],
+      "exclude": [],
+      "rules": [],
+      "decisions": []
+    }
+  },
+  "staging": []
+}

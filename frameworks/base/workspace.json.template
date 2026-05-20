@@ -1,0 +1,64 @@
+{
+  "workspace": "<YOUR_WORKSPACE_NAME>",
+  "created": "<YYYY-MM-DD>",
+  "groom_cadence": "weekly",
+  "groom_day": "Friday",
+  "areas": {
+    "projects": {
+      "type": "directory",
+      "description": "Active projects tracked by PAUL",
+      "paths": ["projects/"],
+      "groom": "weekly",
+      "audit": {
+        "strategy": "staleness",
+        "config": {
+          "threshold_days": 14
+        }
+      }
+    },
+    "system-layer": {
+      "type": "system-layer",
+      "description": "Claude Code config, skills, hooks, rules",
+      "paths": [".claude/"],
+      "groom": "monthly",
+      "audit": {
+        "strategy": "dead-code",
+        "config": {}
+      }
+    }
+  },
+  "carl_hygiene": {
+    "proactive": true,
+    "cadence": "monthly",
+    "staleness_threshold_days": 60,
+    "max_rules_per_domain": 15,
+    "last_run": null
+  },
+  "surfaces": {
+    "projects": {
+      "file": "data/projects.json",
+      "description": "Unified active work + backlog tracking",
+      "hook": true,
+      "silent": true,
+      "schema": {
+        "id_prefix": "PRJ",
+        "required_fields": ["id", "name", "status", "type"],
+        "priority_levels": ["critical", "high", "medium", "low"],
+        "status_values": ["active", "paused", "shipped", "archived", "backlog"]
+      }
+    },
+    "state": {
+      "file": "data/state.json",
+      "description": "Workspace health, drift tracking, groom history",
+      "hook": true,
+      "silent": true,
+      "schema": {
+        "id_prefix": "STA",
+        "required_fields": [],
+        "priority_levels": [],
+        "status_values": ["healthy", "drifting", "stale", "needs_groom"]
+      }
+    }
+  },
+  "satellites": {}
+}
