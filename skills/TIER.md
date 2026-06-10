@@ -16,7 +16,7 @@
 8. continuous-learning-v2 — Instinct model with confidence scoring
 9. context-engineering — Context hierarchy, trust levels, confusion management
 
-## TIER 2 — Active (10 skills, on-demand)
+## TIER 2 — Active (16 skills, on-demand)
 10. code-review — Code review pipeline and checklists
 11. verification-loop — Comprehensive verification system
 12. safety-guard — Destructive action prevention
@@ -27,13 +27,23 @@
 17. codebase-onboarding — Analyze unfamiliar codebases
 18. api-design — REST API design patterns
 19. backend-patterns — Backend architecture patterns
+20. beads-workflow — Hash-ID task ledger, atomic bd claims, dependency-aware scheduling (L1)
+21. blind-judge — Holdout scenarios, write-tool-less reviewers, veto-rate gate (L3)
+22. loop-engine — ralph-loop + fresh-context runner, relay notes, circuit breaker (L2)
+23. mutation-testing — Trail-of-Bits two-phase mutmut campaign (L3)
+24. openspec — Delta-specs against living source-of-truth, brownfield-native (L7)
+25. property-based-testing — Anthropic red-team PBT recipe with Hypothesis (L3)
 
 ## TIER 2 — Domain (5 skills, context-specific)
-20. docker-patterns — Docker and Docker Compose patterns
-21. browser-qa — Automated visual regression testing
-22. e2e-testing — Playwright E2E testing patterns
-23. canary-watch — Deployment canary monitoring
-24. database-migrations — Database migration best practices
+26. docker-patterns — Docker and Docker Compose patterns
+27. browser-qa — Automated visual regression testing
+28. e2e-testing — Playwright E2E testing patterns
+29. canary-watch — Deployment canary monitoring
+30. database-migrations — Database migration best practices
+
+## TIER 2 — Memory & Evals (2 skills, on-demand)
+31. engram-advanced — Progressive disclosure, citation IDs, Seance, temporal search (L5)
+32. harness-evals — Golden task harness, 5-run protocol, SWE-smith auto-generation (L8)
 
 ## Promotion / Demotion Criteria
 - Promotion to TIER 1: >80% usage across 3+ projects

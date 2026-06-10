@@ -1,0 +1,10 @@
+{
+  "recorded_at": "2026-06-10T00:00:00Z",
+  "pass_rate": 1.0,
+  "tasks_run": 1,
+  "tasks_passed": 1,
+  "per_task": {
+    "task-001-stop-verify": true
+  },
+  "note": "Baseline recorded after task-001-stop-verify checks.py was implemented. Tasks 002-020 are prompt stubs without checks.py and are excluded from this baseline."
+}

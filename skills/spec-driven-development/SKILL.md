@@ -199,3 +199,30 @@ Before proceeding to implementation, confirm:
 - [ ] Success criteria are specific and testable
 - [ ] Boundaries (Always/Ask First/Never) are defined
 - [ ] The spec is saved to a file in the repository
+
+## EARS Syntax Reference
+
+EARS (Easy Approach to Requirements Syntax) is the most machine-checkable requirement format. Use it for acceptance criteria — the blind judge verifies these directly.
+
+### Five Templates
+
+| Template | Pattern | Use When |
+|----------|---------|----------|
+| Ubiquitous | `THE SYSTEM SHALL [response]` | Always-true constraints |
+| Event-driven | `WHEN [trigger] THE SYSTEM SHALL [response]` | User actions, external events |
+| State-driven | `WHILE [state] THE SYSTEM SHALL [behavior]` | Ongoing conditions |
+| Option | `WHERE [feature] IS INCLUDED THE SYSTEM SHALL [response]` | Conditional features |
+| Conditional | `IF [condition] THEN THE SYSTEM SHALL [action]` | Pre-conditions |
+
+### Examples (A3 context)
+
+- `WHEN the rollforward is executed THE SYSTEM SHALL produce a closing balance equal to opening + additions - disposals - depreciation within 0.00 EUR tolerance`
+- `WHILE the FA agent is running THE SYSTEM SHALL NOT generate any numeric values via LLM`
+- `IF the Anlagenspiegel reconciliation fails THEN THE SYSTEM SHALL emit an adverse conclusion and halt`
+- `WHERE HGB_MODE IS ENABLED THE SYSTEM SHALL apply §253 Abs.3 straight-line depreciation rules`
+
+### Writing Rules
+
+1. One requirement per EARS statement — no "and" connectors
+2. The response must be testable (observable output or state change)
+3. Avoid "should" — use "shall" (mandatory) or "may" (optional)

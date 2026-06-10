@@ -1,5 +1,53 @@
 # Changelog
 
+## [3.0.0] — 2026-06-10
+
+### Architecture
+- 8-layer factory architecture (L0 Doctrine through L8 Evals) — see FACTORY-BLUEPRINT.md
+- Hashimoto rule as the operating principle: every failure → permanent engineered fix
+
+### Added (L2 Loop Engine)
+- `skills/loop-engine/` — ralph-loop + fresh-context runner, dual exit gate, circuit breaker, error gate, relay notes
+
+### Added (L3 Verification Stack)
+- `hooks/scripts/stop-verify.js` — silent-success Stop hook (ruff/mypy/pytest; surfaces only errors)
+- `skills/mutation-testing/` — Trail-of-Bits two-phase mutmut campaign
+- `skills/property-based-testing/` — Anthropic red-team PBT recipe with Hypothesis
+- `skills/blind-judge/` — permission-denied holdout scenarios, write-tool-less reviewers, veto-rate logging
+
+### Added (L4 Fleet Orchestration)
+- `agents/refinery.md` — serialized merge-queue agent (prevents worktree rebase conflicts)
+- `agents/witness.md` — stuck-agent watchdog with heartbeat nudges
+- `agents/deacon.md` — passive transcript observer, Seance mode, Hashimoto candidate extraction
+
+### Added (L1 Beads)
+- `skills/beads-workflow/` — hash-ID tasks, atomic bd update --claim, dependency-aware bd ready
+
+### Added (L5 Memory)
+- `skills/engram-advanced/` — progressive disclosure, Seance, citation IDs, temporal search
+
+### Added (L6 Safety)
+- `hooks/scripts/cc-safety-net.js` — semantic destructive command guard (recursive unwrapping, interpreter detection)
+- `rules/security-guidance.md` — 3-layer security (regex → LLM diff review → commit tracing)
+- `rules/cache-retention.md` — 60-day session cache policy + entropy GC doctrine
+
+### Added (L7 Specs)
+- `skills/openspec/` — delta-specs against living source-of-truth, brownfield-native
+- EARS syntax reference added to `skills/spec-driven-development/`
+- `templates/AGENTS.md` — ≤100-line ToC template for project agent handbooks
+
+### Added (L8 Harness Evals)
+- `skills/harness-evals/` — Harbor-style golden task harness, 5-run protocol, SWE-smith integration
+- `tests/eval-harness/` — eval harness scaffolded; 1 task fully implemented (task-001), 19 prompt stubs pending checks.py
+
+### Hooks Updated
+- `hooks/hooks.json` — cc-safety-net PreToolUse + Stop hook for stop-verify + veto-rate PostToolUse
+
+### Cuts (v2 → v3)
+- Custom /go autonomous chaining → superseded by native /goal with separate Haiku judge
+- Third-party goal/loop installs (goal-cc, ralph-mcp) → native /goal is strictly stronger
+- Worktree UI managers → native agent teams + Refinery pattern cover it
+
 ## [2.0.0] - 2026-05-21
 
 ### Rebuilt from scratch

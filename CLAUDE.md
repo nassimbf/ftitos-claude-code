@@ -33,6 +33,26 @@ ftitos-claude-code/
 └── install.sh           # Entry point
 ```
 
+## v3 Architecture
+
+ftitos-claude-code v3 implements the 8-layer factory from `FACTORY-BLUEPRINT.md`:
+
+| Layer | Component | Status |
+|-------|-----------|--------|
+| L0 Doctrine | AGENTS.md-as-ToC, docs/ layout | `templates/AGENTS.md` |
+| L1 Work Ledger | Beads (hash-IDs, atomic claims) | `skills/beads-workflow/` |
+| L2 Loop Engine | /goal + ralph-loop + fresh-context runner | `skills/loop-engine/` |
+| L3 Verification | 4-gate stack (deterministic → mutation → PBT → blind judge) | `skills/blind-judge/`, `skills/mutation-testing/`, `skills/property-based-testing/` |
+| L4 Fleet | Refinery merge-queue + Witness/Deacon watchdog | `agents/refinery.md`, `agents/witness.md` |
+| L5 Memory | Engram advanced (progressive disclosure, Seance) | `skills/engram-advanced/` |
+| L6 Safety | cc-safety-net + security-guidance + cache retention | `hooks/scripts/cc-safety-net.js`, `rules/security-guidance.md` |
+| L7 Specs | OpenSpec (delta-specs) + EARS syntax | `skills/openspec/` |
+| L8 Evals | 20 golden tasks + Harbor harness + SWE-smith | `tests/eval-harness/` |
+
+**Key philosophy (Hashimoto rule):** Every observed agent failure becomes a permanent engineered fix — a sign, lint, hook, or tool. Grow the harness only from observed failures; throw away configuration that doesn't earn its tokens.
+
+**Economics:** factory throughput = parallel lanes × loop reliability × verification strength ÷ human attention
+
 ## How
 
 ### Development
