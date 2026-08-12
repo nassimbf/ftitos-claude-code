@@ -16,9 +16,22 @@ const path = require('path');
 const MAX_STDIN = 1024 * 1024;
 const LOG_PATH = path.join(os.homedir(), '.claude', 'safety-net.log');
 
-// Wrappers whose inner argument should be recursively analyzed
+// Wrappers whose inner argument should be recursively analyzed.
+// Interpreters take both -c (python) and -e (node/perl/ruby); matching only -e
+// left `python3 -c "import os; os.system('rm -rf /')"` unguarded.
 const SHELL_WRAPPERS = /^(sh|bash|zsh|dash|eval)\s+(-[a-z]*c\s+|(?=-c\b))/i;
-const INTERP_WRAPPERS = /^(python3?|node|perl|ruby)\s+(-[a-z]*e\s+|(?=-e\b))/i;
+const INTERP_WRAPPERS = /^(python3?|node|perl|ruby)\s+(-[a-z]*[ce]\s+|(?=-[ce]\b))/i;
+
+// A commit message that *describes* a dangerous command is not that command.
+// Strip message bodies from `git commit` invocations before pattern matching,
+// leaving anything chained after the commit intact.
+function stripCommitMessages(cmd) {
+  if (!/\bgit\s+commit\b/.test(cmd)) return cmd;
+  return cmd
+    .replace(/\$\(\s*cat\s*<<-?\s*['"]?(\w+)['"]?[\s\S]*?\n\1\s*\)/g, 'MSG')
+    .replace(/(-m|--message)(\s+)"(?:[^"\\]|\\.)*"/g, '$1$2MSG')
+    .replace(/(-m|--message)(\s+)'(?:[^'\\]|\\.)*'/g, '$1$2MSG');
+}
 
 function stripOuterQuotes(str) {
   let s = str.trim();
@@ -39,7 +52,7 @@ function unwrap(cmd) {
   if (shellMatch) return stripOuterQuotes(shellMatch[1].trim());
   const evalMatch = trimmed.match(/^eval\s+([\s\S]+)/i);
   if (evalMatch) return stripOuterQuotes(evalMatch[1].trim());
-  const interpMatch = trimmed.match(/^(?:python3?|node|perl|ruby)\s+-[a-z]*e\s+([\s\S]+)/i);
+  const interpMatch = trimmed.match(/^(?:python3?|node|perl|ruby)\s+-[a-z]*[ce]\s+([\s\S]+)/i);
   if (interpMatch) return stripOuterQuotes(interpMatch[1].trim());
   return null;
 }
@@ -77,14 +90,16 @@ const PATTERNS = [
   { re: /\bgit\s+stash\s+pop\b(?![\s\S]*stash@\{\d+\})/, label: 'bare git stash pop (shared stash stack across worktrees — use git stash apply stash@{n} with explicit ref instead)' },
   { re: /(?:curl|wget)\s+[^|]+\|\s*(?:bash|sh|zsh|dash)\b/, label: 'remote code execution via pipe to shell' },
   { re: /:\(\)\s*\{[^}]*:\s*\|[^}]*:&[^}]*\};?\s*:/, label: 'fork bomb' },
-  // interpreter one-liners with dangerous content
-  { re: /(?:python3?|node|perl|ruby)\s+-[a-z]*e\s+.*(?:os\.system|subprocess|exec|eval|unlink|rmdir|rm)/i, label: 'dangerous interpreter one-liner' },
+  // Interpreter one-liners with dangerous content. Matches -c as well as -e:
+  // python's flag is -c, so an -e-only pattern missed the most common form
+  // (observed 2026-08-12 while testing the hook against `python3 -c`).
+  { re: /(?:python3?|node|perl|ruby)\s+-[a-z]*[ce]\s+.*(?:os\.system|subprocess|exec|eval|unlink|rmdir|rm)/i, label: 'dangerous interpreter one-liner' },
   // subshell expansion feeding rm -rf
   { re: /\brm\s+.*-[a-z]*r[a-z]*f[a-z]*\s+.*(?:\$\(|`)/, label: 'rm -rf with subshell expansion' },
 ];
 
 function check(cmd) {
-  const layers = allLayers(cmd);
+  const layers = allLayers(stripCommitMessages(cmd));
   for (const layer of layers) {
     const normalized = normalizeFlags(layer);
     for (const { re, label } of PATTERNS) {
