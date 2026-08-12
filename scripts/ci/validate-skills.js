@@ -47,8 +47,10 @@ function main() {
 
   console.log(`\nSkills validated: ${dirs.length}, Failures: ${failures}`);
 
-  if (dirs.length < 24) {
-    console.error(`FAIL: Expected at least 24 skill directories, found ${dirs.length}`);
+  // v4 caps the set: an unused skill's description is a tax on every session.
+  const MAX_SKILLS = 8;
+  if (dirs.length === 0 || dirs.length > MAX_SKILLS) {
+    console.error(`FAIL: expected 1-${MAX_SKILLS} skill directories, found ${dirs.length}`);
     process.exit(1);
   }
 

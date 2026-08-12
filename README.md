@@ -1,79 +1,82 @@
-# ftitos-claude-code v2.0
+# ftitos-claude-code v4
 
-Claude Code configuration for CEO vibe coders. Parallel agents, framework-driven pipeline, ships fast, 3 human gates only.
+A Claude Code harness for shipping a startup. Five hooks that enforce, six skills that
+get used, three rules files. Everything else was measured and removed.
 
-## What's Included
+## Why v4 is smaller than v3
 
-| Component | Count | Purpose |
-|-----------|-------|---------|
-| Agents | 18 + 5 CCG | Specialist subagents (security, performance, TDD, etc.) |
-| Skills | 24 (9 core + 15 on-demand) | Behavioral patterns loaded by tier |
-| Rules | 6 + 10 language | Code standards, workflow, quality, review army |
-| Hooks | 8 | GateGuard, tmux enforcement, session management |
-| Commands | 8 root + 7 project | `/go`, `/plan`, `/tdd`, `/project:sprint`, etc. |
-| Pipeline | 9 phases | VALIDATE > SPECIFY > PLAN > ANALYZE > BUILD > REVIEW > TEST > SHIP > MONITOR |
-| Frameworks | 4 | BASE, PAUL, Aegis, CARL |
-| Brain | 2 | Engram (session memory) + GitNexus (code structure) |
+v3 shipped 32 skills, 23 agents, 15 commands and 16 rules files. An audit of 7,077 real
+prompts over 4.5 months found that 26 of the 32 skills had never been invoked once, 8 of
+the 15 commands had zero uses, and the always-on context cost was **22,162 tokens per
+session before the user typed anything**.
 
-## Quick Start
+v4 is what was left after removing everything with no evidence behind it.
+
+| | v3 | v4 |
+|---|---|---|
+| Always-on context | ~22,200 tokens | **~5,800 tokens** |
+| Skills | 32 | 6 |
+| Agents | 23 | 6 |
+| Commands | 15 | 9 |
+| Rules files | 16 | 3 |
+| Hooks wired | 45 (8 duplicated) | 15 |
+
+## The idea
+
+Markdown is advice. Hooks are enforcement. Anything that can be a hook should be a hook,
+and anything that cannot earn its context budget should not ship.
+
+## Hooks
+
+| Hook | Event | What it stops |
+|---|---|---|
+| `cc-safety-net.js` | PreToolUse: Bash | `rm -rf ~`, `git clean -fdx`, force-push, bare `git stash pop`, and interpreter one-liners that wrap the same. Unwraps `sh -c`/`eval` recursively rather than regex-matching the surface. |
+| `pre-secrets-block.js` | PreToolUse: Write\|Edit | Writes to `.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.*`. Content carrying `sk-`, `ghp_`, `AKIA`, PEM blocks, or a password/token assigned a real literal. Allows `*.example`, `*.template`, and env-var references. |
+| `stop-verify.js` | Stop | The model claiming it is done while ruff/mypy/pytest fail. Resolves tools from the project `.venv` so a global binary never verifies a venv project. |
+| `gateguard-pre-edit.js` + `gateguard-track-read.js` | PreToolUse / PostToolUse | Editing a file that has not been read. |
+| `post-edit-combined.js` | PostToolUse: Edit | Format and typecheck drift, on every edit rather than at the end. |
+
+## Install
 
 ```bash
 git clone https://github.com/ftitos/ftitos-claude-code.git
 cd ftitos-claude-code
-./install.sh          # Full install
-./install.sh --dry-run  # Preview what gets copied
-npm run doctor        # Health check (12 checks)
+./install.sh
+npm run doctor
 ```
 
-## Pipeline
-
-```
-VALIDATE > SPECIFY > PLAN > ANALYZE > [Gate 1: approve] > BUILD > REVIEW > TEST > [Gate 2: approved] > SHIP > [Gate 3: ship] > MONITOR
-```
-
-Start with `/go "Build feature X"` — everything between gates runs autonomously.
+`doctor` exits non-zero on duplicate hook registrations, hooks pointing at scripts that do
+not exist, repo/install version drift, and an always-on context budget over 8,000 tokens.
+The v2 doctor reported "healthy" on a config with all four problems; this one does not.
 
 ## Commands
 
 | Command | Purpose |
-|---------|---------|
-| `/go "feature"` | CEO entry point, chains full pipeline |
-| `/plan` | Write implementation plan |
-| `/tdd` | Enforce test-driven development |
-| `/build-fix` | Fix build errors |
-| `/verify` | Run verification checks |
-| `/code-review` | Trigger code review |
-| `/brain <query>` | Query Engram/GitNexus |
-| `/learn` | Extract reusable patterns |
-| `/project:init` | Initialize project with all frameworks |
-| `/project:sprint` | Advance sprint phase |
-| `/project:status` | Show current state |
-| `/project:review` | Run 7-specialist review army |
-| `/project:analyze` | 8-check consistency gate |
-| `/project:constitution` | Versioned project governance |
+|---|---|
+| `/go "feature"` | Full pipeline: validate → plan → build → review → test → ship |
+| `/plan` | Implementation plan before code |
+| `/project:sprint` | Advance one pipeline phase |
+| `/project:status` | Where the sprint is |
+| `/project:review` | 7-specialist review army + adversarial council on CRITICAL findings |
+| `/project:analyze` | Cross-artifact consistency gate |
 | `/project:ship` | Push with validation |
+| `/project:init` | Wire a new project |
+| `/project:constitution` | Versioned project governance |
 
-## Review Army
+The review army and council prompts live inside `commands/project/review.md`, not in
+`rules/`. They are ~10 KB and are needed roughly ten times a year, so they load on demand.
 
-7 specialists dispatched in parallel based on diff scope:
+## Agents
 
-1. **Security** (8/10 gate, NEVER_GATE) — auth bypass, injection, secrets, XSS
-2. **Performance** (7/10, AUTO_GATE) — N+1, unbounded loops, missing indexes
-3. **Data Migration** (8/10, NEVER_GATE) — reversibility, data loss, zero-downtime
-4. **API Contract** (7/10, AUTO_GATE) — breaking changes, versioning, validation
-5. **Testing** (7/10, AUTO_GATE) — coverage gaps, flaky tests, mock boundaries
-6. **Maintainability** (7/10, AUTO_GATE) — function size, dead code, DRY
-7. **Design/UX** (7/10, AUTO_GATE) — a11y, responsive, loading/error states
+`code-reviewer` · `security-reviewer` · `debugger` · `planner` · `python-reviewer` · `architect`
 
-CRITICAL findings go through the Review Council (2 independent reviewers, anti-anchoring).
+Six, because the audit found three agent types dispatched across the entire history.
 
 ## Development
 
 ```bash
-npm test              # Run all tests
-npm run validate:agents
-npm run validate:skills
-npm run validate:hooks
+npm test          # structural validation + secrets-block behaviour tests
+npm run doctor    # health check against the installed config
 ```
 
 ## License

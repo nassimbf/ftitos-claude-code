@@ -6,25 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/cc-safety-net.js\""
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/pre-edit-backup.js\""
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/gateguard-pre-edit.js\""
+            "command": "node \"$HOME/.claude/scripts/hooks/cc-safety-net.js\"",
+            "description": "block destructive commands"
           }
         ]
       },
@@ -33,7 +16,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/pre-bash-dev-server-block.js\""
+            "command": "node \"$HOME/.claude/scripts/hooks/pre-bash-dev-server-block.js\"",
+            "description": "dev servers must run in tmux"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/pre-secrets-block.js\"",
+            "description": "block secret files and secret content"
           }
         ]
       },
@@ -42,29 +36,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/suggest-compact.js\""
+            "command": "node \"$HOME/.claude/scripts/hooks/gateguard-pre-edit.js\"",
+            "description": "read before edit"
           }
         ]
-      }
-    ],
-    "PreCompact": [
+      },
       {
-        "matcher": "*",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/pre-compact.js\""
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/session-start.js\""
+            "command": "node \"$HOME/.claude/scripts/hooks/pre-edit-backup.js\"",
+            "description": "snapshot before edit"
           }
         ]
       }
@@ -75,25 +58,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/gateguard-track-read.js\""
+            "command": "node \"$HOME/.claude/scripts/hooks/gateguard-track-read.js\"",
+            "description": "track reads for gateguard"
           }
         ]
       },
       {
-        "matcher": "Agent",
+        "matcher": "Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/veto-rate-logger.js\""
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/brain-merge-router.js\""
+            "command": "node \"$HOME/.claude/scripts/hooks/post-edit-combined.js\"",
+            "description": "format and typecheck on edit"
           }
         ]
       }
@@ -104,7 +80,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/stop-verify.js\""
+            "command": "node \"$HOME/.claude/scripts/hooks/stop-verify.js\"",
+            "description": "lint, typecheck and test before finishing"
           }
         ]
       },
@@ -113,7 +90,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/ralph-loop.js\""
+            "command": "node \"$HOME/.claude/scripts/hooks/ralph-loop.js\"",
+            "description": "loop engine, no-op unless LOOP_GOAL is set"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/session-start.js\"",
+            "description": "session bootstrap"
           }
         ]
       }
@@ -124,19 +114,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/scripts/hooks/session-end.js\""
+            "command": "node \"$HOME/.claude/scripts/hooks/session-end.js\"",
+            "description": "session summary"
           }
         ]
       }
     ],
-    "PostCompact": [
+    "PreCompact": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostCompact\",\"additionalContext\":\"Context was compacted. Use session memory tools to reload previous session state.\"}}'",
-            "timeout": 2
+            "command": "node \"$HOME/.claude/scripts/hooks/pre-compact.js\"",
+            "description": "checkpoint before compaction"
           }
         ]
       }

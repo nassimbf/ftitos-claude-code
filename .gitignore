@@ -2,3 +2,6 @@ node_modules/
 .DS_Store
 *.bak.*
 .ftitos-cc-manifest.json
+
+# v4 removals — git history is the archive
+.archive/

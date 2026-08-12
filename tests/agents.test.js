@@ -17,12 +17,20 @@ function assert(condition, message) {
   }
 }
 
-function validateAgentDir(dir, label, minCount) {
+// v4 asserts a ceiling, not a floor. Every shipped agent costs context on every session,
+// so growth is the failure mode worth catching — not scarcity.
+const MAX_AGENTS = 8;
+
+function validateAgentDir(dir, label, maxCount) {
   assert(fs.existsSync(dir), `${label}/ directory should exist`);
 
   if (fs.existsSync(dir)) {
     const files = fs.readdirSync(dir).filter((f) => f.endsWith(".md"));
-    assert(files.length >= minCount, `${label}/ should have at least ${minCount} agents (found ${files.length})`);
+    assert(files.length > 0, `${label}/ should have at least one agent`);
+    assert(
+      files.length <= maxCount,
+      `${label}/ should ship at most ${maxCount} agents (found ${files.length}) — see skills/TIER.md admission criteria`
+    );
 
     for (const file of files) {
       const content = fs.readFileSync(path.join(dir, file), "utf8").trim();
@@ -31,8 +39,8 @@ function validateAgentDir(dir, label, minCount) {
   }
 }
 
-validateAgentDir(AGENTS_DIR, "agents", 18);
-validateAgentDir(AGENTS_CCG_DIR, "agents-ccg", 5);
+validateAgentDir(AGENTS_DIR, "agents", MAX_AGENTS);
+assert(!fs.existsSync(AGENTS_CCG_DIR), "agents-ccg/ was removed in v4 and should not return");
 
 if (failures > 0) {
   console.error(`\nagents.test.js: ${failures} failure(s)`);

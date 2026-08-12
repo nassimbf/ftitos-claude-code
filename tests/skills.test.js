@@ -22,7 +22,14 @@ if (fs.existsSync(SKILLS_DIR)) {
   const entries = fs.readdirSync(SKILLS_DIR, { withFileTypes: true });
   const skillDirs = entries.filter((e) => e.isDirectory());
 
-  assert(skillDirs.length >= 24, `skills/ should contain at least 24 skill directories (found ${skillDirs.length})`);
+  // v4 asserts a ceiling. Claude Code scans every skill's description on every session,
+  // so an unused skill is a permanent tax — growth is the regression to catch.
+  const MAX_SKILLS = 8;
+  assert(skillDirs.length > 0, "skills/ should contain at least one skill");
+  assert(
+    skillDirs.length <= MAX_SKILLS,
+    `skills/ should ship at most ${MAX_SKILLS} skills (found ${skillDirs.length}) — see skills/TIER.md admission criteria`
+  );
 
   for (const dir of skillDirs) {
     const skillPath = path.join(SKILLS_DIR, dir.name);

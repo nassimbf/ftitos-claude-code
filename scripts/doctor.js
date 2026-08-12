@@ -1,247 +1,194 @@
 #!/usr/bin/env node
-"use strict";
+/**
+ * Health check for an installed ftitos-claude-code harness.
+ *
+ * v4 rewrite. The v2 doctor counted files and reported OK no matter what it found —
+ * it passed a config with 8 duplicate hook registrations and 22k tokens of always-on
+ * context. This one measures the things that actually go wrong:
+ *   duplicate hooks, hooks pointing at missing scripts, version drift, context budget.
+ */
 
-const fs = require("fs");
-const path = require("path");
-const os = require("os");
-const { execSync } = require("child_process");
+'use strict';
 
-const STATUS = { GREEN: "GREEN", YELLOW: "YELLOW", RED: "RED" };
-const LABELS = { GREEN: "[OK]", YELLOW: "[WARN]", RED: "[FAIL]" };
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { execSync } = require('child_process');
 
-const TIER_1_SKILLS = [
-  "tdd-workflow", "writing-plans", "executing-plans",
-  "subagent-driven-development", "security-review", "incremental-implementation",
-  "product-lens", "continuous-learning-v2", "context-engineering",
-];
+const STATUS = { GREEN: 'GREEN', YELLOW: 'YELLOW', RED: 'RED' };
+const LABELS = { GREEN: '[OK]  ', YELLOW: '[WARN]', RED: '[FAIL]' };
 
-const TIER_2_SKILLS = [
-  "code-review", "verification-loop", "safety-guard",
-  "dispatching-parallel-agents", "spec-driven-development", "git-workflow",
-  "python-testing", "codebase-onboarding", "api-design", "backend-patterns",
-  "docker-patterns", "browser-qa", "e2e-testing", "canary-watch", "database-migrations",
-];
+const HOME = os.homedir();
+const CLAUDE_DIR = path.join(HOME, '.claude');
+const REPO_ROOT = path.dirname(__dirname);
 
-const PIPELINE_PHASES = [
-  "validate", "specify", "plan", "analyze", "build", "review", "test", "ship", "monitor",
-];
+// Above this, the harness is eating the context window it exists to protect.
+const CONTEXT_BUDGET_TOKENS = 8000;
+const REQUIRED_HOOKS = ['cc-safety-net.js', 'pre-secrets-block.js', 'stop-verify.js'];
 
-function check(name, fn) {
-  try {
-    const result = fn();
-    console.log(`  ${LABELS[result.status]}  ${name}: ${result.message}`);
-    return result.status;
-  } catch (err) {
-    console.log(`  ${LABELS[STATUS.RED]}  ${name}: ${err.message}`);
-    return STATUS.RED;
+const readJson = p => JSON.parse(fs.readFileSync(p, 'utf8'));
+const exists = p => fs.existsSync(p);
+
+function settings() {
+  const p = path.join(CLAUDE_DIR, 'settings.json');
+  return exists(p) ? readJson(p) : {};
+}
+
+function hookEntries() {
+  const hooks = settings().hooks || {};
+  return Object.entries(hooks).flatMap(([event, matchers]) =>
+    (matchers || []).flatMap(m => (m.hooks || []).map(h => ({ event, command: h.command || '' }))));
+}
+
+// Hook commands look like: node "$HOME/.claude/scripts/hooks/x.js" or python3 /abs/path/y.py
+function scriptPath(command) {
+  const token = command.split(/\s+/).find(t => /\.(js|py|sh)"?$/.test(t)) || '';
+  return token.replace(/"/g, '').replace(/^\$HOME|^~/, HOME);
+}
+
+function scriptName(command) {
+  return path.basename(scriptPath(command));
+}
+
+function walk(dir, onFile) {
+  if (!exists(dir)) return;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) walk(full, onFile);
+    else onFile(full);
   }
 }
 
-function countFiles(dir, filter) {
-  if (!fs.existsSync(dir)) return 0;
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  if (filter === "dirs") return entries.filter((e) => e.isDirectory()).length;
-  return entries.filter((e) => e.isFile()).length;
+function descriptionBytes(globDir, filename) {
+  let total = 0;
+  walk(globDir, f => {
+    if (filename && path.basename(f) !== filename) return;
+    if (!f.endsWith('.md')) return;
+    const head = fs.readFileSync(f, 'utf8').slice(0, 4000);
+    const fm = head.match(/^---\n([\s\S]*?)\n---/);
+    if (!fm) return;
+    const desc = fm[1].match(/^description:\s*(.*)$/m);
+    const name = fm[1].match(/^name:\s*(.*)$/m);
+    total += (desc ? desc[1].length : 0) + (name ? name[1].length : 0);
+  });
+  return total;
 }
 
-function countFilesRecursive(dir) {
-  if (!fs.existsSync(dir)) return 0;
-  let count = 0;
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.isFile()) count++;
-    else if (entry.isDirectory()) count += countFilesRecursive(path.join(dir, entry.name));
-  }
-  return count;
-}
+const CHECKS = [
+  ['Node.js', () => {
+    const major = parseInt(process.versions.node.split('.')[0], 10);
+    return major >= 18
+      ? { status: STATUS.GREEN, message: `v${process.versions.node}` }
+      : { status: STATUS.RED, message: `v${process.versions.node} (requires >= 18)` };
+  }],
+
+  ['Claude Code CLI', () => {
+    try {
+      const v = execSync('claude --version 2>/dev/null', { encoding: 'utf8' }).trim();
+      return { status: STATUS.GREEN, message: v || 'installed' };
+    } catch {
+      return { status: STATUS.RED, message: 'not found in PATH' };
+    }
+  }],
+
+  ['Duplicate hooks', () => {
+    const seen = new Map();
+    for (const { event, command } of hookEntries()) {
+      const key = `${event}:${scriptName(command)}`;
+      if (scriptName(command)) seen.set(key, (seen.get(key) || 0) + 1);
+    }
+    const dupes = [...seen].filter(([, n]) => n > 1);
+    return dupes.length === 0
+      ? { status: STATUS.GREEN, message: 'none' }
+      : { status: STATUS.RED, message: `${dupes.length} hook(s) registered twice: ${dupes.map(([k]) => k).join(', ')}` };
+  }],
+
+  ['Hook scripts resolve', () => {
+    const missing = hookEntries()
+      .map(h => scriptPath(h.command))
+      .filter(Boolean)
+      .filter(p => !exists(p))
+      .map(p => path.basename(p));
+    return missing.length === 0
+      ? { status: STATUS.GREEN, message: 'all wired scripts exist' }
+      : { status: STATUS.RED, message: `missing: ${[...new Set(missing)].join(', ')}` };
+  }],
+
+  ['Enforcement hooks present', () => {
+    const missing = REQUIRED_HOOKS.filter(h => !exists(path.join(CLAUDE_DIR, 'scripts', 'hooks', h)));
+    return missing.length === 0
+      ? { status: STATUS.GREEN, message: REQUIRED_HOOKS.join(', ') }
+      : { status: STATUS.RED, message: `missing: ${missing.join(', ')}` };
+  }],
+
+  ['Context budget', () => {
+    const bytes = descriptionBytes(path.join(CLAUDE_DIR, 'skills'), 'SKILL.md')
+      + descriptionBytes(path.join(CLAUDE_DIR, 'agents'))
+      + descriptionBytes(path.join(CLAUDE_DIR, 'commands'))
+      + (exists(path.join(CLAUDE_DIR, 'rules'))
+          ? fs.readdirSync(path.join(CLAUDE_DIR, 'rules'))
+              .filter(f => f.endsWith('.md'))
+              .reduce((n, f) => n + fs.statSync(path.join(CLAUDE_DIR, 'rules', f)).size, 0)
+          : 0);
+    const tokens = Math.round(bytes / 4);
+    const msg = `~${tokens.toLocaleString()} tokens always-on (budget ${CONTEXT_BUDGET_TOKENS.toLocaleString()})`;
+    if (tokens <= CONTEXT_BUDGET_TOKENS) return { status: STATUS.GREEN, message: msg };
+    if (tokens <= CONTEXT_BUDGET_TOKENS * 2) return { status: STATUS.YELLOW, message: msg };
+    return { status: STATUS.RED, message: msg };
+  }],
+
+  ['Backup cruft', () => {
+    let count = 0;
+    walk(CLAUDE_DIR, f => { if (/\.bak\.\d+$/.test(f)) count += 1; });
+    return count === 0
+      ? { status: STATUS.GREEN, message: 'none' }
+      : { status: STATUS.YELLOW, message: `${count} .bak.* files — run: find ~/.claude -name '*.bak.*' -delete` };
+  }],
+
+  ['Version match', () => {
+    const version = fs.readFileSync(path.join(REPO_ROOT, 'VERSION'), 'utf8').trim();
+    const manifestPath = path.join(CLAUDE_DIR, '.ftitos-cc-manifest.json');
+    if (!exists(manifestPath)) return { status: STATUS.YELLOW, message: `repo v${version}, never installed via installer` };
+    const installed = readJson(manifestPath).version;
+    return installed === version
+      ? { status: STATUS.GREEN, message: `v${version} repo and install agree` }
+      : { status: STATUS.RED, message: `repo v${version} but installed v${installed} — run ./install.sh` };
+  }],
+
+  ['MCP servers', () => {
+    const p = path.join(HOME, '.claude.json');
+    if (!exists(p)) return { status: STATUS.YELLOW, message: 'no MCP config found' };
+    const count = Object.keys(readJson(p).mcpServers || {}).length;
+    if (count === 0) return { status: STATUS.YELLOW, message: 'none configured' };
+    if (count <= 6) return { status: STATUS.GREEN, message: `${count} servers` };
+    return { status: STATUS.YELLOW, message: `${count} servers — each one costs context on every session` };
+  }],
+];
 
 function main() {
-  const home = os.homedir();
-  const claudeDir = path.join(home, ".claude");
+  const version = fs.readFileSync(path.join(REPO_ROOT, 'VERSION'), 'utf8').trim();
+  console.log(`ftitos-claude-code v${version} doctor\n`);
 
-  console.log("ftitos-claude-code v2.0 doctor\n");
+  const results = CHECKS.map(([name, fn]) => {
+    try {
+      const r = fn();
+      console.log(`  ${LABELS[r.status]}  ${name}: ${r.message}`);
+      return r.status;
+    } catch (err) {
+      console.log(`  ${LABELS[STATUS.RED]}  ${name}: ${err.message}`);
+      return STATUS.RED;
+    }
+  });
 
-  const results = [];
+  const tally = s => results.filter(r => r === s).length;
+  console.log(`\nResult: ${tally(STATUS.GREEN)} OK, ${tally(STATUS.YELLOW)} warnings, ${tally(STATUS.RED)} failures`);
 
-  // 1. Node.js version
-  results.push(
-    check("Node.js version", () => {
-      const version = process.versions.node;
-      const major = parseInt(version.split(".")[0], 10);
-      if (major >= 18) return { status: STATUS.GREEN, message: `v${version}` };
-      return { status: STATUS.RED, message: `v${version} (requires >= 18)` };
-    })
-  );
-
-  // 2. Claude Code CLI
-  results.push(
-    check("Claude Code CLI", () => {
-      try {
-        const version = execSync("claude --version 2>/dev/null", { encoding: "utf8" }).trim();
-        return { status: STATUS.GREEN, message: version || "installed" };
-      } catch {
-        return { status: STATUS.RED, message: "not found in PATH" };
-      }
-    })
-  );
-
-  // 3. .claude directory
-  results.push(
-    check("~/.claude directory", () => {
-      if (fs.existsSync(claudeDir)) return { status: STATUS.GREEN, message: "exists" };
-      return { status: STATUS.RED, message: "missing" };
-    })
-  );
-
-  // 4. Agents (18 base + 5 CCG = 23)
-  results.push(
-    check("Agents", () => {
-      const baseDir = path.join(claudeDir, "agents");
-      const ccgDir = path.join(claudeDir, "agents", "ccg");
-      const baseCount = countFiles(baseDir, "files");
-      const ccgCount = fs.existsSync(ccgDir) ? countFiles(ccgDir, "files") : 0;
-      const total = baseCount + ccgCount;
-      if (total >= 23) return { status: STATUS.GREEN, message: `${total} agents (${baseCount} base + ${ccgCount} CCG)` };
-      if (total > 0) return { status: STATUS.YELLOW, message: `${total} agents (expected 23+)` };
-      return { status: STATUS.RED, message: "no agents found" };
-    })
-  );
-
-  // 5. TIER 1 Skills
-  results.push(
-    check("TIER 1 Skills", () => {
-      const skillsDir = path.join(claudeDir, "skills");
-      const missing = TIER_1_SKILLS.filter(
-        (s) => !fs.existsSync(path.join(skillsDir, s, "SKILL.md"))
-      );
-      if (missing.length === 0) return { status: STATUS.GREEN, message: `${TIER_1_SKILLS.length}/9 present` };
-      return { status: STATUS.RED, message: `missing: ${missing.join(", ")}` };
-    })
-  );
-
-  // 6. TIER 2 Skills
-  results.push(
-    check("TIER 2 Skills", () => {
-      const skillsDir = path.join(claudeDir, "skills");
-      const missing = TIER_2_SKILLS.filter(
-        (s) => !fs.existsSync(path.join(skillsDir, s, "SKILL.md"))
-      );
-      if (missing.length === 0) return { status: STATUS.GREEN, message: `${TIER_2_SKILLS.length}/15 present` };
-      if (missing.length <= 3) return { status: STATUS.YELLOW, message: `missing ${missing.length}: ${missing.join(", ")}` };
-      return { status: STATUS.RED, message: `missing ${missing.length}: ${missing.join(", ")}` };
-    })
-  );
-
-  // 7. Rules
-  results.push(
-    check("Rules", () => {
-      const dir = path.join(claudeDir, "rules");
-      const count = countFilesRecursive(dir);
-      if (count >= 14) return { status: STATUS.GREEN, message: `${count} rule files` };
-      if (count > 0) return { status: STATUS.YELLOW, message: `${count} rules (expected 14+)` };
-      return { status: STATUS.RED, message: "no rules found" };
-    })
-  );
-
-  // 8. GateGuard pair
-  results.push(
-    check("GateGuard hooks", () => {
-      const scriptsDir = path.join(claudeDir, "scripts", "hooks");
-      const preEdit = fs.existsSync(path.join(scriptsDir, "gateguard-pre-edit.js"));
-      const trackRead = fs.existsSync(path.join(scriptsDir, "gateguard-track-read.js"));
-      if (preEdit && trackRead) return { status: STATUS.GREEN, message: "both scripts present" };
-      if (preEdit || trackRead) return { status: STATUS.YELLOW, message: "only one GateGuard script found" };
-      return { status: STATUS.RED, message: "GateGuard scripts missing" };
-    })
-  );
-
-  // 9. Pipeline phases
-  results.push(
-    check("Pipeline phases", () => {
-      const repoRoot = path.dirname(__dirname);
-      const phasesDir = path.join(repoRoot, "pipeline", "phases");
-      if (!fs.existsSync(phasesDir)) return { status: STATUS.YELLOW, message: "pipeline/phases/ not found in repo" };
-      const missing = PIPELINE_PHASES.filter(
-        (p) => !fs.existsSync(path.join(phasesDir, `${p}.md`))
-      );
-      if (missing.length === 0) return { status: STATUS.GREEN, message: `${PIPELINE_PHASES.length}/9 phases` };
-      return { status: STATUS.RED, message: `missing: ${missing.join(", ")}` };
-    })
-  );
-
-  // 10. Hooks configured
-  results.push(
-    check("Hooks configured", () => {
-      const candidates = ["settings.json", "settings.local.json"];
-      for (const name of candidates) {
-        const p = path.join(claudeDir, name);
-        if (fs.existsSync(p)) {
-          const data = JSON.parse(fs.readFileSync(p, "utf8"));
-          const hooks = data.hooks || {};
-          let count = 0;
-          if (typeof hooks === "object" && !Array.isArray(hooks)) {
-            for (const entries of Object.values(hooks)) {
-              if (Array.isArray(entries)) count += entries.length;
-            }
-          }
-          if (count >= 6) return { status: STATUS.GREEN, message: `${count} hooks in ${name}` };
-          if (count > 0) return { status: STATUS.YELLOW, message: `${count} hooks (expected 6+)` };
-        }
-      }
-      return { status: STATUS.RED, message: "no hooks in settings" };
-    })
-  );
-
-  // 11. MCP servers
-  results.push(
-    check("MCP servers", () => {
-      const mcpPaths = [
-        path.join(home, ".claude.json"),
-        path.join(claudeDir, ".mcp.json"),
-      ];
-      for (const mcpPath of mcpPaths) {
-        if (fs.existsSync(mcpPath)) {
-          const data = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
-          const servers = data.mcpServers || {};
-          const count = Object.keys(servers).length;
-          if (count >= 3) return { status: STATUS.GREEN, message: `${count} servers in ${path.basename(mcpPath)}` };
-          if (count > 0) return { status: STATUS.YELLOW, message: `${count} servers (expected 3+)` };
-        }
-      }
-      return { status: STATUS.YELLOW, message: "no MCP config found" };
-    })
-  );
-
-  // 12. Install manifest
-  results.push(
-    check("Install manifest", () => {
-      const manifestPath = path.join(claudeDir, ".ftitos-cc-manifest.json");
-      if (fs.existsSync(manifestPath)) {
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-        return { status: STATUS.GREEN, message: `v${manifest.version} installed ${manifest.installedAt}` };
-      }
-      return { status: STATUS.YELLOW, message: "not installed via installer" };
-    })
-  );
-
-  console.log("");
-
-  const reds = results.filter((r) => r === STATUS.RED).length;
-  const yellows = results.filter((r) => r === STATUS.YELLOW).length;
-  const greens = results.filter((r) => r === STATUS.GREEN).length;
-
-  console.log(`Result: ${greens} OK, ${yellows} warnings, ${reds} failures`);
-
-  if (reds > 0) {
-    console.log("Fix RED items before using.");
+  if (tally(STATUS.RED) > 0) {
+    console.log('Fix the FAIL items before relying on this harness.');
     process.exit(1);
-  } else if (yellows > 0) {
-    console.log("All critical checks pass. Review warnings above.");
-    process.exit(0);
-  } else {
-    console.log("All 12 checks pass. System is healthy.");
-    process.exit(0);
   }
+  console.log(tally(STATUS.YELLOW) > 0 ? 'Critical checks pass. Review warnings above.' : 'Healthy.');
+  process.exit(0);
 }
 
 main();
