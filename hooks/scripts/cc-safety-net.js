@@ -71,6 +71,10 @@ const PATTERNS = [
   { re: /\bDROP\s+(?:DATABASE|TABLE)\b/i, label: 'DROP DATABASE or DROP TABLE' },
   { re: /\bchmod\s+(?:-R\s+)?(?:777|a\+rwx)\b/, label: 'chmod 777 / chmod -R 777' },
   { re: /\bgit\s+clean\b(?=[\s\S]*-[a-z]*f)/, label: 'git clean -f / -fd / -fdx' },
+  // Stash stack is shared across all worktrees: a bare pop can apply ANOTHER
+  // session's WIP into this tree (observed failure 2026-06-10, phase1-tools).
+  // Require an explicit ref: git stash apply stash@{n} (apply keeps the entry).
+  { re: /\bgit\s+stash\s+pop\b(?![\s\S]*stash@\{\d+\})/, label: 'bare git stash pop (shared stash stack across worktrees — use git stash apply stash@{n} with explicit ref instead)' },
   { re: /(?:curl|wget)\s+[^|]+\|\s*(?:bash|sh|zsh|dash)\b/, label: 'remote code execution via pipe to shell' },
   { re: /:\(\)\s*\{[^}]*:\s*\|[^}]*:&[^}]*\};?\s*:/, label: 'fork bomb' },
   // interpreter one-liners with dangerous content
