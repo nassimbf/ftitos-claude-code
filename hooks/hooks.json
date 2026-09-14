@@ -92,6 +92,15 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/ship-gate.js\""
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
@@ -120,6 +129,15 @@
             "type": "command",
             "command": "node \"$HOME/.claude/scripts/hooks/post-edit-combined.js\"",
             "description": "format and typecheck on edit"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/read-injection-scanner.js\""
           }
         ]
       }

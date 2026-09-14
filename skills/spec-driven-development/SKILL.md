@@ -214,12 +214,12 @@ EARS (Easy Approach to Requirements Syntax) is the most machine-checkable requir
 | Option | `WHERE [feature] IS INCLUDED THE SYSTEM SHALL [response]` | Conditional features |
 | Conditional | `IF [condition] THEN THE SYSTEM SHALL [action]` | Pre-conditions |
 
-### Examples (A3 context)
+### Examples
 
 - `WHEN the rollforward is executed THE SYSTEM SHALL produce a closing balance equal to opening + additions - disposals - depreciation within 0.00 EUR tolerance`
 - `WHILE the FA agent is running THE SYSTEM SHALL NOT generate any numeric values via LLM`
-- `IF the Anlagenspiegel reconciliation fails THEN THE SYSTEM SHALL emit an adverse conclusion and halt`
-- `WHERE HGB_MODE IS ENABLED THE SYSTEM SHALL apply §253 Abs.3 straight-line depreciation rules`
+- `IF the ledger reconciliation fails THEN THE SYSTEM SHALL emit an adverse conclusion and halt`
+- `WHERE STRICT_MODE IS ENABLED THE SYSTEM SHALL apply straight-line depreciation rules`
 
 ### Writing Rules
 

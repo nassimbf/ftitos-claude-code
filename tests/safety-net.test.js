@@ -43,6 +43,33 @@ const MUST_BLOCK = [
   'true\n{ rm -rf /; }',
   "r''m -rf /",
   'r""m -rf /',
+  // Obfuscation that survived every guard above (probed 2026-09-14 against the
+  // shipped hook). Each bypasses a different assumption:
+  //
+  // `${IFS}` is an own-goal. CMD_POS anchors a command to `^` or a separator, so
+  // prefixing the line with a parameter expansion means the command it expands to
+  // occupies neither position and the whole guard falls through. The brace-group
+  // hardening that put this hook ahead of upstream is what opened it.
+  '${IFS}rm -rf ~',
+  '$IFS rm -rf /',
+  // Variable indirection: the dangerous word never appears as a literal command.
+  'X=rm; $X -rf /',
+  'CMD=rm && $CMD -rf ~',
+  // base64 -> shell. The payload decodes to `rm -rf /`; nothing in the visible
+  // text matches any pattern. The pipe-to-shell rule only knew curl and wget.
+  'echo cm0gLXJmIC8= | base64 -d | sh',
+  'echo cm0gLXJmIC8= | base64 --decode | bash',
+  'eval "$(echo cm0gLXJmIC8= | base64 -d)"',
+  // The other side of the command-position fix: anchoring must not let a real
+  // destructive command through. Each of these runs the thing.
+  'git reset --hard HEAD~3',
+  'chmod 777 /etc/passwd',
+  'make deploy; git push --force origin main',
+  'cd /repo && git clean -fdx',
+  // SQL reaching an actual client is still executed, wherever it sits in the
+  // string. `psql -c "DROP TABLE users"` is the normal way to run it.
+  'psql -c "DROP TABLE users"',
+  'mysql -e "DROP DATABASE prod"',
 ];
 
 const MUST_ALLOW = [
@@ -68,6 +95,39 @@ const MUST_ALLOW = [
   // delete a relative path and then run something harmless.
   'rm -rf build && ls skills/',
   'rm -rf node_modules && ls /',
+  // THIRD instance of the borrowed-evidence class (2026-09-14, found while
+  // probing the injection scanner). The interpreter-one-liner rule used `.*`,
+  // which runs straight past a separator, so a harmless `node -e` was judged
+  // against an `rm` belonging to a different command later in the chain. SEG
+  // stops at the first `;`, `&`, `|` or newline — where the command being
+  // judged actually ends.
+  'node -e "console.log(1)"; rm -f /tmp/scratch',
+  'python3 -c "print(1)" ; rm /tmp/y',
+  // Guards on the obfuscation rules added 2026-09-14. Each mechanism has an
+  // ordinary, frequent, legitimate form, and a guard that blocks those is a guard
+  // the user turns off.
+  // The command-position fix landed for `rm` only (a47f4d8, e544109); the other
+  // six patterns kept matching their literal text anywhere in the string. Found
+  // 2026-09-14 when the hook blocked a probe script that merely *contained* the
+  // words `git push --force` inside a quoted JSON payload. Same regression class
+  // as the `grep -r "rm -rf ~"` case already fixed above, six rules later.
+  'echo "git push --force is banned"',
+  'grep -r "git reset --hard" ./docs',
+  'echo "never run chmod 777 on prod"',
+  'grep -rn "git clean -fdx" ./notes',
+  'echo "use git stash apply, not git stash pop"',
+  // SQL is different: it legitimately lives in argument position, so DROP stays
+  // matchable anywhere and is exempted by the CONSUMER instead. Searching for it
+  // is reading; running it through a client is not.
+  'rg "DROP TABLE users" --glob "*.sql"',
+  'grep -rn "DROP DATABASE" ./migrations',
+  'eval "$(ssh-agent -s)"',          // the canonical eval; blocking it is a non-starter
+  'eval "$(direnv hook zsh)"',
+  'echo hello | base64',             // encoding is not decoding
+  'base64 -d payload.b64 > out.bin', // decoding to a file never reaches a shell
+  'IFS=, read -r a b <<< "1,2"',     // IFS as an actual field separator
+  'X=hello; echo $X',                // a variable that is not a command
+  'curl -s https://api.example.com | jq .',  // a pipe whose sink is not a shell
 ];
 
 const cases = [

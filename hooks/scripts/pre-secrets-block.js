@@ -15,6 +15,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { HOOK_ON_CRASH, crash } = require('./lib/hook-exit.js');
 
 const MAX_STDIN = 1024 * 1024;
 const LOG_PATH = path.join(os.homedir(), '.claude', 'safety-net.log');
@@ -101,14 +102,35 @@ process.stdin.on('data', chunk => {
   if (raw.length < MAX_STDIN) raw += chunk.substring(0, MAX_STDIN - raw.length);
 });
 process.stdin.on('end', () => {
+  // Two failures live here and they need OPPOSITE policies. One catch used to
+  // cover both, so a throw anywhere in the scan fell through to the pass-through
+  // below and shipped the secret (found 2026-09-14).
+  //
+  //   parse failure  -> ALLOW. Input we could not read is not evidence of a
+  //                     secret, and blocking every malformed payload would wedge
+  //                     the tool on an unrelated bug.
+  //   scan failure   -> DENY.  This hook's entire job is stopping a secret. If
+  //                     its own scan crashes it has NOT cleared the write, and
+  //                     saying nothing is indistinguishable from saying yes.
+  let input;
   try {
-    const input = JSON.parse(raw);
+    input = JSON.parse(raw);
+  } catch {
+    process.stdout.write(raw); // ALLOW: unparseable input
+    return;
+  }
+
+  try {
     if (WATCHED_TOOLS.has(input.tool_name)) {
       const toolInput = input.tool_input || {};
       const filePath = toolInput.file_path || toolInput.notebook_path;
       const reason = checkPath(filePath) || checkBody(bodyOf(toolInput));
       if (reason) block(reason, filePath);
     }
-  } catch { /* parse error — never block on malformed input */ }
+  } catch (err) {
+    crash(HOOK_ON_CRASH.DENY, err); // DENY: the scan did not clear this write
+    return;
+  }
+
   process.stdout.write(raw);
 });

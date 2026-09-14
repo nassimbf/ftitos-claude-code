@@ -27,6 +27,7 @@
 
 const path = require('path');
 const { readStdinJson, output, log } = require('./lib/utils');
+const { HOOK_ON_CRASH, crash } = require('./lib/hook-exit.js');
 
 // Tools that can put file contents into the conversation.
 const GUARDED_TOOLS = new Set(['Read', 'Grep', 'Bash']);
@@ -114,4 +115,12 @@ async function main() {
   });
 }
 
-main();
+// DENY on crash. This hook's entire job is keeping a secret out of the
+// conversation, and a secret that lands there stays there — in every later
+// request and every subagent prompt built from it. If findSecret throws it has
+// NOT cleared the read, and silence is indistinguishable from approval.
+//
+// Before this, an exception exited 1: neither allow nor deny, an unhandled
+// rejection with undefined blocking behaviour. A non-string file_path reaches
+// it (2026-09-14).
+main().catch(err => crash(HOOK_ON_CRASH.DENY, err));

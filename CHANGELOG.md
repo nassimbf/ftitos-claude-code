@@ -1,5 +1,82 @@
 # Changelog
 
+## [6.0.0] — 2026-09-14
+
+The hardening pass. Almost everything here was found by the harness blocking real work,
+not by review — which is the Hashimoto rule doing what it exists for.
+
+### New enforcement
+
+- **`ship-gate.js`** — fires on `git push` / `gh pr create`. Blocks secrets, debug
+  artifacts (`console.log`, `pdb`, `debugger`, `.only`) and TODOs with no issue
+  reference, then audits dependencies when the outgoing diff touched a manifest.
+  `rules/security.md` and `rules/code.md` already required all of this; it was prose,
+  which the model may skip. Only ADDED diff lines count — removing a `console.log` is the
+  fix, not the offence.
+- **`read-injection-scanner.js`** — scans what Read/WebFetch/WebSearch returned for
+  prompt injection. Advisory by design: by PostToolUse the content is already in the
+  context window, so refusing the call cannot un-read it and blocking would be theatre.
+  Labelling it as data is what helps.
+- **`lib/hook-exit.js`** — a hook must DECLARE fail-open or fail-closed. A helper with a
+  default lets a future hook inherit the wrong policy by saying nothing.
+- **`scripts/ci/mutation-ratchet.js`** — a test-quality gate that deleting tests cannot
+  game. Uncovered mutants stay in the denominator, so "fixing" survivors by removing
+  their tests lowers the score instead of raising it.
+
+### Fixed
+
+- **Four obfuscation bypasses** in `cc-safety-net.js`: `${IFS}rm -rf ~`,
+  `X=rm; $X -rf /`, and two base64-to-shell forms. The first was an own-goal — the
+  brace-group hardening that put this hook ahead of upstream displaced the command from
+  the position its own anchor required.
+- **The borrowed-evidence class, three times.** A pattern's wildcard runs past a shell
+  separator and judges a command against an unrelated later one. `rm` was fixed in
+  e544109; six more rules still matched literal text anywhere; the interpreter rule still
+  used `.*`. And the obvious fix was wrong for the last one: `SEG` stops at the first
+  `;`, but a one-liner's `;` sits inside its quoted body, so a real `python3 -c` attack
+  walked straight through. Bound by the quote, not the separator.
+- **Both secret hooks failed open on their own crash.** `pre-secrets-block` wrapped parse
+  failure and scan failure in one `catch`, so a throw mid-scan shipped the secret.
+  `secret-read-guard` had no outer catch at all — exit 1, undefined blocking behaviour.
+  Both now fail closed.
+- **The installer skipped existing files**, so a hook fixed here never reached
+  `~/.claude`. It blocked legitimate work twice in one session while the repo copy was
+  correct. Now distinguishes `SKIP (identical)` from `WOULD UPDATE (stale)`.
+- **Duplicate hook registrations, again.** v4 deduped `settings.json`; nothing stopped
+  the installer re-creating them. It compared raw command strings, so `$HOME/...` and
+  `/Users/...` read as different registrations — one install produced 9 duplicates. Now
+  matched by resolved path, and a second install is a no-op.
+- **`stop-verify.js` recovered from `~/.claude`**, where it had been 67 lines ahead since
+  the field fix. Scopes verification to files this session edited, because several
+  sessions can share a worktree and `git status` cannot tell them apart.
+
+### Added
+
+- Six stack-matched agents from `affaan-m/ecc` (MIT) — FastAPI, PostgreSQL, TypeScript,
+  React, RAG pipelines, TDD. A generic reviewer catches generic bugs.
+- `NOTICE` — `open-gsd/gsd-core` had no attribution despite 33 files deriving from it.
+- `VENDOR-MINING.md` — 13 ecosystem projects cloned and read from source. Six earlier
+  conclusions, made from READMEs and the GitHub API, turned out to be wrong.
+
+### Removed
+
+- The agent count cap. Same proxy mistake v5 removed for skills: it would reject a
+  30-token agent while an unbounded description rewrite passed untouched. The budget
+  decides.
+- An orphaned `graphify` skill install — skill present, no graph, no hooks, no wiring.
+
+Tests 14 → 20 files. Agents 8 → 14. Always-on 6,239 → ~6,600 of 8,000.
+
+## [5.0.0] — 2026-09-14
+
+Native-primitives cut. `commands/`, `pipeline/` and `frameworks/` removed: the first two
+were never in the installer's copy map, so Claude Code had never read a byte of either,
+and `commands/` was installed and broken — `/go` chained to 17 commands, ten of which did
+not exist. Added `block-no-verify.js` (before it, every gate here was optional),
+`write-shrink-guard.js`, `secret-read-guard.js` and `worktree-path-guard.js`; vendored
+`cso`/`browse`/`qa` from gstack. Replaced the skill-count cap with a measured token
+budget, after it blocked a 61-token skill while unbounded description growth passed.
+
 ## [4.0.0] — 2026-08-12
 
 The evidence pass. v3 was audited against 7,077 real prompts spanning 2026-04-01 to
@@ -48,10 +125,10 @@ now in the repo:
 
 - `cc-safety-net.js` — blocks bare `git stash pop`. The stash stack is repo-global; a bare
   pop applied another session's WIP into a clean worktree and produced 26 conflicted files
-  (observed 2026-06-10, A3 phase1-tools).
+  (observed 2026-06-10).
 - `stop-verify.js` — resolves ruff/mypy/pytest from the project `.venv`, and skips a
   verifier rather than falling back to a global binary. A Homebrew pytest on a different
-  Python produced 188 phantom collection errors on every Stop event (observed 2026-06-10, A3).
+  Python produced 188 phantom collection errors on every Stop event (observed 2026-06-10).
 
 ### Removed
 

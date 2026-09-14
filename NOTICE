@@ -1,0 +1,83 @@
+# NOTICE
+
+ftitos-claude-code is MIT-licensed (see LICENSE). It also contains material
+vendored from, and ported from, three MIT-licensed upstream projects. Their
+copyright notices are reproduced below, as MIT requires.
+
+Three kinds of borrowing appear in this repo, and they are labelled differently
+in the files themselves:
+
+  vendored   the file is upstream's, copied with at most cosmetic changes
+  ported     upstream's mechanism, reimplemented here against our own contracts
+  cited      our own file, crediting an upstream idea or a bug they documented
+
+A full evaluation of these and ten other projects — including what was
+deliberately NOT taken, and why — is in VENDOR-MINING.md.
+
+--------------------------------------------------------------------------
+## open-gsd/gsd-core
+
+Ported: `hooks/scripts/lib/hook-exit.js` (declared crash policy),
+`hooks/scripts/read-injection-scanner.js` (injection patterns and the
+distinct-rule severity model), `scripts/ci/mutation-ratchet.js` (the
+denominator rule and the ratchet, from their stryker.config.mjs).
+
+Vendored or closely derived: `hooks/scripts/write-shrink-guard.js` (from their
+gsd-write-guard.js, including the incident it documents),
+`hooks/scripts/secret-read-guard.js`, `hooks/scripts/worktree-path-guard.js`.
+
+Cited across `agents/` and `agents/references/`.
+
+MIT License
+
+Copyright (c) 2026 Open GSD
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------
+## affaan-m/ecc (Everything Claude Code)
+
+Nine agents in `agents/`. Full list, and the note on which were already present
+uncredited before 2026-09-14, in `agents/ECC-LICENSE`.
+
+Also ported: the command-word permission regex in
+`hooks/scripts/cc-safety-net.js` reached us via shareAI-lab/learn-claude-code
+and has since diverged — ours is ahead.
+
+Copyright (c) 2026 Affaan Mustafa. MIT — full text in `agents/ECC-LICENSE`.
+
+--------------------------------------------------------------------------
+## garrytan/gstack
+
+Three skills vendored at pin `71f6048` (v1.84.1.0): `skills/cso`,
+`skills/browse`, `skills/qa`.
+
+De-vendoring removed their `gstack-question-log`, `gstack-learnings-log` and
+`gstack-decision-search` telemetry calls. Preserve that on any re-pin.
+
+Copyright (c) 2026 Garry Tan. MIT — full text in `skills/GSTACK-LICENSE`.
+
+--------------------------------------------------------------------------
+## shareAI-lab/learn-claude-code
+
+Cited only. The command-word permission regex in
+`hooks/scripts/cc-safety-net.js` originated there; it has since diverged, and
+the brace-group and runner-prefix handling are ours.
+
+Copyright (c) 2026 shareAI Lab. MIT.
