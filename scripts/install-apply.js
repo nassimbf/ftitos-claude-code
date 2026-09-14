@@ -141,8 +141,26 @@ function copyDirectory(srcDir, destDir, opts, exclude) {
   return installed;
 }
 
+// `node "$HOME/.claude/scripts/hooks/x.js"` and
+// `node "/Users/me/.claude/scripts/hooks/x.js"` are the same registration, but
+// as raw strings they are not equal, so dedup missed and every install added a
+// second copy of a hook already present. That is the v4 duplicate-hooks bug
+// (1f4fafc: "8 hooks registered twice, so every edit ran GateGuard and wrote a
+// backup twice") returning by a different route — observed again 2026-09-14
+// when an install produced 9 duplicates.
+//
+// Comparing the resolved path makes the two forms one key. Quotes are dropped
+// too, since quoting is a shell detail and not part of the identity.
+function normalizeHookCommand(command) {
+  return String(command || "")
+    .replace(/\$\{HOME\}|\$HOME\b/g, os.homedir())
+    .replace(/(^|\s)~(?=\/)/g, `$1${os.homedir()}`)
+    .replace(/["']/g, "")
+    .trim();
+}
+
 function hookKey(eventType, matcher, command) {
-  return `${eventType}::${matcher}::${command}`;
+  return `${eventType}::${matcher}::${normalizeHookCommand(command)}`;
 }
 
 function mergeHooks(srcPath, destPath, opts) {

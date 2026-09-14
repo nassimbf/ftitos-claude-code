@@ -87,6 +87,42 @@ const cases = [
       && fs.readdirSync(claude).length > 0;
     assert(!wroteAnything, '--dry-run must not create or modify any file');
   })],
+
+  // Second bug, found by running the fixed installer: `$HOME/...` and the
+  // expanded `/Users/me/...` are the same registration but not the same string,
+  // so dedup missed and the merge added a second copy of hooks already present.
+  // That is the v4 duplicate-hooks bug (1f4fafc) arriving by another route — an
+  // install produced 9 duplicates, and a duplicated PreToolUse hook runs every
+  // guard twice on every call.
+  ['installing twice adds no duplicate hook registrations', () => withTempDir(home => {
+    const env = { ...process.env, HOME: home };
+    const run = () => execFileSync('node', [INSTALLER], { encoding: 'utf8', cwd: REPO, env });
+
+    run();
+    const second = run();
+    assert(
+      /All hooks already present/.test(second),
+      'a second install must be a no-op for hooks'
+    );
+
+    const settings = JSON.parse(
+      fs.readFileSync(path.join(home, '.claude', 'settings.json'), 'utf8')
+    );
+    for (const [event, entries] of Object.entries(settings.hooks || {})) {
+      const seen = new Set();
+      for (const entry of entries) {
+        for (const hook of entry.hooks || []) {
+          // Same normalisation the installer uses: resolved path, no quotes.
+          const key = `${entry.matcher}::${String(hook.command || '')
+            .replace(/\$\{HOME\}|\$HOME\b/g, home)
+            .replace(/["']/g, '')
+            .trim()}`;
+          assert(!seen.has(key), `${event} registers this hook twice: ${key}`);
+          seen.add(key);
+        }
+      }
+    }
+  })],
 ];
 
 let passed = 0;
