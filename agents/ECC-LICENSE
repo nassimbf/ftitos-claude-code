@@ -38,5 +38,18 @@ previously uncredited — this file corrects that attribution:
 
   code-reviewer          silent-failure-hunter  opensource-sanitizer
 
-python-reviewer shares a name with ECC's but has diverged; ours is the
-smaller, older fork and was not resynced. See VENDOR-MINING.md.
+python-reviewer shares a name with ECC's but has diverged. Compared 2026-09-14:
+the reviewer content is identical. The only differences are a `tools:` frontmatter
+format nit and ECC's 9-line "Prompt Defense Baseline" — prose asking the agent to
+treat fetched and third-party content as untrusted.
+
+Deliberately NOT resynced. That concern is now enforced mechanically by
+hooks/scripts/read-injection-scanner.js, which scans what Read, WebFetch and
+WebSearch actually return and labels it as data. Per this repo's governing rule a
+script that enforces beats prose that advises, and the prose costs ~1,100
+characters on every invocation of every agent carrying it.
+
+Note the resulting inconsistency, left visible on purpose: the six agents above
+still carry the Baseline as vendored. Stripping it would mean editing six
+upstream files and inviting merge pain on the next re-pin, for prose that is
+harmless where it already sits. Do not ADD it to any new agent.
