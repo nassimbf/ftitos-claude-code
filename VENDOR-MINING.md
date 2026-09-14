@@ -89,6 +89,17 @@ is inert unless the PreToolUse hook is installed.**
 Decision: complete the install or delete `~/projects/A3/.claude/skills/graphify/`. A skill
 documenting `/graphify` against a nonexistent graph is a trap.
 
+**Resolved 2026-09-14 — archived, not completed.** The directory was untracked in A3 and
+is now at `~/projects/A3/.claude/skills-archive/graphify-orphaned-2026-09-14/` with a
+`WHY-ARCHIVED.md` recording what a real install needs. Archived rather than deleted, per
+this repo's own convention.
+
+Archiving is the right half of "complete or delete" because completing it is not a small
+step: ~30 Python wheels per machine, four separate pieces of wiring, and a full rebuild
+whose wall-clock nobody has measured on a repo this size. That is a decision to make
+deliberately, not a side effect of a cleanup pass. What could not stay was the pointer
+without the thing.
+
 **Cost of completing it.** The ~39-token frontmatter claim is confirmed (140 bytes), but a
 *working* install also wants `always_on/claude-md.md` (772 B) in CLAUDE.md, so true always-on
 is **~230 tokens** — 6× advertised, and still inside the ceiling (6,239 → ~6,470). The body is
