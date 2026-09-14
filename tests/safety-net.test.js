@@ -54,6 +54,12 @@ const MUST_ALLOW = [
   'grep -r "rm -rf ~" ./docs',
   'rg "rm -rf /" --glob "*.md"',
   'echo "rm -rf /"',
+  // Second regression (observed 2026-09-14, same session): the -f/-r/target
+  // lookaheads scanned [\s\S]* — the entire command — so a scratch delete was
+  // judged against a `/` belonging to a later, unrelated segment. Both of these
+  // delete a relative path and then run something harmless.
+  'rm -rf build && ls skills/',
+  'rm -rf node_modules && ls /',
 ];
 
 const cases = [

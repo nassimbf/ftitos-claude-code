@@ -85,8 +85,14 @@ function normalizeFlags(cmd) {
 // a runner that execs its argument (`sudo rm`, `xargs rm`). Anything else is data.
 const CMD_POS = String.raw`(?:^|[;&|(\n])\s*(?:(?:sudo|doas|xargs|time|nohup|env|command)\s+(?:-\S+\s+)*)*`;
 
+// Flags and target must be read from the SAME command, so stop at a separator.
+// With `[\s\S]*` the lookaheads searched the whole string and borrowed evidence
+// from later segments: `rm -rf build && ls skills/` was judged against the `/`
+// in `skills/` and blocked. SEG is everything up to the next `;`, `&`, `|`, newline.
+const SEG = String.raw`[^;&|\n]*`;
+
 const PATTERNS = [
-  { re: new RegExp(CMD_POS + String.raw`rm\b(?=[\s\S]*-[a-z]*f)(?=[\s\S]*-[a-z]*r)(?=[\s\S]*(?:\/(?:\s|$)|~|\$(?:HOME|\{HOME\})|\.\.\/.*\.\.\/))`), label: 'rm -rf targeting root, home, or .. chain' },
+  { re: new RegExp(CMD_POS + String.raw`rm\b(?=${SEG}-[a-z]*f)(?=${SEG}-[a-z]*r)(?=${SEG}(?:\/(?:\s|$)|~|\$(?:HOME|\{HOME\})|\.\.\/.*\.\.\/))`), label: 'rm -rf targeting root, home, or .. chain' },
   { re: /\bgit\s+push\b.*(?:--force|-f)\b/, label: 'git push --force' },
   { re: /\bgit\s+reset\s+--hard\b/, label: 'git reset --hard' },
   { re: /\bDROP\s+(?:DATABASE|TABLE)\b/i, label: 'DROP DATABASE or DROP TABLE' },
@@ -103,7 +109,7 @@ const PATTERNS = [
   // (observed 2026-08-12 while testing the hook against `python3 -c`).
   { re: /(?:python3?|node|perl|ruby)\s+-[a-z]*[ce]\s+.*(?:os\.system|subprocess|exec|eval|unlink|rmdir|rm)/i, label: 'dangerous interpreter one-liner' },
   // subshell expansion feeding rm -rf
-  { re: new RegExp(CMD_POS + String.raw`rm\s+.*-[a-z]*r[a-z]*f[a-z]*\s+.*(?:\$\(|` + '`)'), label: 'rm -rf with subshell expansion' },
+  { re: new RegExp(CMD_POS + String.raw`rm\s+${SEG}-[a-z]*r[a-z]*f[a-z]*\s+${SEG}(?:\$\(|` + '`)'), label: 'rm -rf with subshell expansion' },
 ];
 
 function check(cmd) {
