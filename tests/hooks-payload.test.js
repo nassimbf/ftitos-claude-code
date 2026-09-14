@@ -86,30 +86,11 @@ console.log('\n--- cc-safety-net.js ---');
   assert(result.status === 2, 'git push --force should be blocked (exit 2)');
 }
 
-// ---------------------------------------------------------------------------
-// veto-rate-logger.js — CONFIRM pattern must not over-match
-// ---------------------------------------------------------------------------
-
-console.log('\n--- veto-rate-logger.js ---');
-
-// Bug 15 fix: plain "CONFIRM" in unrelated text should not log as vetoed
-{
-  const result = runHook('veto-rate-logger.js', {
-    tool_name: 'Agent',
-    tool_response: { content: 'Please confirm the deployment is ready before proceeding.' },
-  });
-  // Should exit 0 without logging — the word "CONFIRM" alone doesn't match the new tighter pattern
-  assert(result.status === 0, 'plain "confirm" text should not trigger veto logging (exit 0)');
-}
-
-// "VETOED" still triggers
-{
-  const result = runHook('veto-rate-logger.js', {
-    tool_name: 'Agent',
-    tool_response: { content: '[CRITICAL] ... Council: VETOED — blocks ship' },
-  });
-  assert(result.status === 0, 'VETOED signal should be logged but still exit 0 (no blocking)');
-}
+// veto-rate-logger.js was covered here until 2026-09-14. It logged "Review Army"
+// and "Council" veto signals — subsystems this harness does not have — and was
+// registered in no hooks.json event, so nothing ever invoked it. Tested dead code
+// still reads as coverage, which is worse than no coverage: the suite was green
+// on a file the harness never ran. Archived to .archive/hooks/.
 
 // ---------------------------------------------------------------------------
 // Final
