@@ -1,6 +1,6 @@
 {
   "name": "ftitos-claude-code",
-  "version": "2.0.0",
+  "version": "5.0.0",
   "description": "Lean Claude Code setup: 23 agents, 24 skills, 9-phase pipeline, 7-specialist review army, 3 human gates",
   "main": "scripts/install-apply.js",
   "bin": {
