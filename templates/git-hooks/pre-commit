@@ -1,0 +1,22 @@
+#!/bin/bash
+# Pre-commit gate for ftitos-claude-code.
+# Replaces a hook left behind by an unrelated project ("Cannae OS" latency suite)
+# that pointed at tests/test_60fps_ingestion.py and silently exited 0 in this repo.
+
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+echo ">>> ftitos-claude-code pre-commit gate"
+
+if ! node tests/run-all.js; then
+  echo "BLOCKED: test suite failed."
+  exit 1
+fi
+
+if ! node scripts/doctor.js > /dev/null; then
+  echo "BLOCKED: doctor failed. Run 'node scripts/doctor.js' for detail."
+  exit 1
+fi
+
+echo "Tests and doctor pass."
+exit 0

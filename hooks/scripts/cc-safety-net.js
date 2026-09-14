@@ -16,9 +16,22 @@ const path = require('path');
 const MAX_STDIN = 1024 * 1024;
 const LOG_PATH = path.join(os.homedir(), '.claude', 'safety-net.log');
 
-// Wrappers whose inner argument should be recursively analyzed
+// Wrappers whose inner argument should be recursively analyzed.
+// Interpreters take both -c (python) and -e (node/perl/ruby); matching only -e
+// left `python3 -c "import os; os.system('rm -rf /')"` unguarded.
 const SHELL_WRAPPERS = /^(sh|bash|zsh|dash|eval)\s+(-[a-z]*c\s+|(?=-c\b))/i;
-const INTERP_WRAPPERS = /^(python3?|node|perl|ruby)\s+(-[a-z]*e\s+|(?=-e\b))/i;
+const INTERP_WRAPPERS = /^(python3?|node|perl|ruby)\s+(-[a-z]*[ce]\s+|(?=-[ce]\b))/i;
+
+// A commit message that *describes* a dangerous command is not that command.
+// Strip message bodies from `git commit` invocations before pattern matching,
+// leaving anything chained after the commit intact.
+function stripCommitMessages(cmd) {
+  if (!/\bgit\s+commit\b/.test(cmd)) return cmd;
+  return cmd
+    .replace(/\$\(\s*cat\s*<<-?\s*['"]?(\w+)['"]?[\s\S]*?\n\1\s*\)/g, 'MSG')
+    .replace(/(-m|--message)(\s+)"(?:[^"\\]|\\.)*"/g, '$1$2MSG')
+    .replace(/(-m|--message)(\s+)'(?:[^'\\]|\\.)*'/g, '$1$2MSG');
+}
 
 function stripOuterQuotes(str) {
   let s = str.trim();
@@ -39,7 +52,7 @@ function unwrap(cmd) {
   if (shellMatch) return stripOuterQuotes(shellMatch[1].trim());
   const evalMatch = trimmed.match(/^eval\s+([\s\S]+)/i);
   if (evalMatch) return stripOuterQuotes(evalMatch[1].trim());
-  const interpMatch = trimmed.match(/^(?:python3?|node|perl|ruby)\s+-[a-z]*e\s+([\s\S]+)/i);
+  const interpMatch = trimmed.match(/^(?:python3?|node|perl|ruby)\s+-[a-z]*[ce]\s+([\s\S]+)/i);
   if (interpMatch) return stripOuterQuotes(interpMatch[1].trim());
   return null;
 }
@@ -64,23 +77,57 @@ function normalizeFlags(cmd) {
   });
 }
 
+// `\brm\b` matched `rm` anywhere in the string, so a command that merely *carried*
+// the text — `grep -r "rm -rf ~" ./docs` — was blocked (observed 2026-09-14).
+// `echo` and commit messages had bespoke exemptions; every other consumer did not.
+// Matching command position instead of any position fixes the whole class: a word
+// is a command when it opens the string or follows a separator, optionally behind
+// a runner that execs its argument (`sudo rm`, `xargs rm`). Anything else is data.
+// `{` opens a brace group, which is a command position exactly like `;` or `|`.
+// Omitting it meant `{ rm -rf /; }` ran a command the guard never inspected
+// (probed 2026-09-14, alongside the quote-splitting case handled in normalize()).
+const CMD_POS = String.raw`(?:^|[;&|(\n{])\s*(?:(?:sudo|doas|xargs|time|nohup|env|command)\s+(?:-\S+\s+)*)*`;
+
+// Flags and target must be read from the SAME command, so stop at a separator.
+// With `[\s\S]*` the lookaheads searched the whole string and borrowed evidence
+// from later segments: `rm -rf build && ls skills/` was judged against the `/`
+// in `skills/` and blocked. SEG is everything up to the next `;`, `&`, `|`, newline.
+const SEG = String.raw`[^;&|\n]*`;
+
 const PATTERNS = [
-  { re: /\brm\b(?=[\s\S]*-[a-z]*f)(?=[\s\S]*-[a-z]*r)(?=[\s\S]*(?:\/(?:\s|$)|~|\$(?:HOME|\{HOME\})|\.\.\/.*\.\.\/))/, label: 'rm -rf targeting root, home, or .. chain' },
+  // A bare `/` target ends at whitespace, end-of-string, OR a shell separator.
+  // Accepting only the first two meant `{ rm -rf /; }` read as a path `/;` and
+  // fell through — the brace-group bypass was two bugs, not one.
+  { re: new RegExp(CMD_POS + String.raw`rm\b(?=${SEG}-[a-z]*f)(?=${SEG}-[a-z]*r)(?=${SEG}(?:\/(?:\s|$|[;&|)}])|~|\$(?:HOME|\{HOME\})|\.\.\/.*\.\.\/))`), label: 'rm -rf targeting root, home, or .. chain' },
   { re: /\bgit\s+push\b.*(?:--force|-f)\b/, label: 'git push --force' },
   { re: /\bgit\s+reset\s+--hard\b/, label: 'git reset --hard' },
   { re: /\bDROP\s+(?:DATABASE|TABLE)\b/i, label: 'DROP DATABASE or DROP TABLE' },
   { re: /\bchmod\s+(?:-R\s+)?(?:777|a\+rwx)\b/, label: 'chmod 777 / chmod -R 777' },
   { re: /\bgit\s+clean\b(?=[\s\S]*-[a-z]*f)/, label: 'git clean -f / -fd / -fdx' },
+  // Stash stack is shared across all worktrees: a bare pop can apply ANOTHER
+  // session's WIP into this tree (observed failure 2026-06-10, phase1-tools).
+  // Require an explicit ref: git stash apply stash@{n} (apply keeps the entry).
+  { re: /\bgit\s+stash\s+pop\b(?![\s\S]*stash@\{\d+\})/, label: 'bare git stash pop (shared stash stack across worktrees — use git stash apply stash@{n} with explicit ref instead)' },
   { re: /(?:curl|wget)\s+[^|]+\|\s*(?:bash|sh|zsh|dash)\b/, label: 'remote code execution via pipe to shell' },
   { re: /:\(\)\s*\{[^}]*:\s*\|[^}]*:&[^}]*\};?\s*:/, label: 'fork bomb' },
-  // interpreter one-liners with dangerous content
-  { re: /(?:python3?|node|perl|ruby)\s+-[a-z]*e\s+.*(?:os\.system|subprocess|exec|eval|unlink|rmdir|rm)/i, label: 'dangerous interpreter one-liner' },
+  // Interpreter one-liners with dangerous content. Matches -c as well as -e:
+  // python's flag is -c, so an -e-only pattern missed the most common form
+  // (observed 2026-08-12 while testing the hook against `python3 -c`).
+  { re: /(?:python3?|node|perl|ruby)\s+-[a-z]*[ce]\s+.*(?:os\.system|subprocess|exec|eval|unlink|rmdir|rm)/i, label: 'dangerous interpreter one-liner' },
   // subshell expansion feeding rm -rf
-  { re: /\brm\s+.*-[a-z]*r[a-z]*f[a-z]*\s+.*(?:\$\(|`)/, label: 'rm -rf with subshell expansion' },
+  { re: new RegExp(CMD_POS + String.raw`rm\s+${SEG}-[a-z]*r[a-z]*f[a-z]*\s+${SEG}(?:\$\(|` + '`)'), label: 'rm -rf with subshell expansion' },
 ];
 
+// An empty quote pair is invisible to the shell but splits a word for anything
+// matching on text: `r''m` executes `rm`. Dropping the pairs restores the word
+// the shell will actually run. Done after commit-message stripping, which needs
+// real quotes intact to find message bodies.
+function collapseEmptyQuotes(cmd) {
+  return cmd.replace(/''|""/g, '');
+}
+
 function check(cmd) {
-  const layers = allLayers(cmd);
+  const layers = allLayers(collapseEmptyQuotes(stripCommitMessages(cmd)));
   for (const layer of layers) {
     const normalized = normalizeFlags(layer);
     for (const { re, label } of PATTERNS) {

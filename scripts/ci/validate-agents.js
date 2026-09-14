@@ -8,6 +8,9 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const AGENTS_DIR = path.join(REPO_ROOT, "agents");
 const AGENTS_CCG_DIR = path.join(REPO_ROOT, "agents-ccg");
 
+// v4 caps the roster: each shipped agent costs context on every session.
+const MAX_AGENTS = 8;
+
 function validateDir(dir, label) {
   if (!fs.existsSync(dir)) {
     console.error(`FAIL: ${label}/ directory does not exist`);
@@ -37,19 +40,20 @@ function main() {
   console.log("Validating agents...\n");
 
   const base = validateDir(AGENTS_DIR, "agents");
-  const ccg = validateDir(AGENTS_CCG_DIR, "agents-ccg");
 
-  const total = base.count + ccg.count;
-  const totalFailures = base.failures + ccg.failures;
+  console.log(`\nAgents validated: ${base.count}, Failures: ${base.failures}`);
 
-  console.log(`\nAgents validated: ${total} (${base.count} base + ${ccg.count} CCG), Failures: ${totalFailures}`);
-
-  if (total < 18) {
-    console.error(`FAIL: Expected at least 18 base agents, found ${base.count}`);
+  if (fs.existsSync(AGENTS_CCG_DIR)) {
+    console.error("FAIL: agents-ccg/ was removed in v4 and should not return");
     process.exit(1);
   }
 
-  if (totalFailures > 0) process.exit(1);
+  if (base.count === 0 || base.count > MAX_AGENTS) {
+    console.error(`FAIL: expected 1-${MAX_AGENTS} agents, found ${base.count}`);
+    process.exit(1);
+  }
+
+  if (base.failures > 0) process.exit(1);
 }
 
 main();

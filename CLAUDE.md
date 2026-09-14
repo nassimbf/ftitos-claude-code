@@ -2,80 +2,115 @@
 
 ## What
 
-ftitos-claude-code is an open-source Claude Code configuration harness. It packages agents, skills, rules, hooks, commands, and framework configs into an installable bundle that transforms Claude Code into an autonomous engineering system.
+ftitos-claude-code is an installable Claude Code harness. v4 is deliberately small: the
+value is in five hooks that enforce behaviour deterministically, not in a library of
+markdown the model may or may not read.
 
 ## Where
 
 ```
 ftitos-claude-code/
-├── agents/              # 18 specialist agent definitions
-├── agents-ccg/          # 5 CCG team agents
-├── skills/              # 24 skill directories (each with SKILL.md)
-├── rules/               # 6 common + 10 language-specific rules
-│   ├── python/          # 5 Python rules
-│   └── typescript/      # 5 TypeScript rules
+├── agents/          # 6 specialist agents
+├── skills/          # 9 skills — no count cap; the budget decides (skills/TIER.md)
+├── rules/           # 3 always-on files: code, workflow, security
+│   ├── python/      # language-specific, loaded on demand
+│   └── typescript/
 ├── hooks/
-│   ├── hooks.json       # Hook definitions (merged into settings.json)
-│   └── scripts/         # 8 hook scripts + lib/
-├── commands/            # 8 root + 7 project slash commands
-├── brain/               # Engram + GitNexus setup guides
-├── frameworks/          # BASE, PAUL, Aegis, CARL docs + templates
-├── pipeline/            # 9-phase sprint pipeline definitions
+│   ├── hooks.json   # 17 registrations, merged into settings.json at install
+│   └── scripts/     # 18 scripts — the enforcement layer
 ├── scripts/
-│   ├── install-apply.js # Installer
-│   ├── uninstall.js     # Uninstaller
-│   ├── doctor.js        # 12-check health validator
-│   ├── diff-scope.sh    # Review Army scope detection
-│   └── ci/              # CI validation scripts
-├── tests/               # Test suite
-├── templates/           # Project starter templates
-├── examples/            # Example CLAUDE.md files
-└── install.sh           # Entry point
+│   ├── ci/          # 6 validators, run by doctor and the git hooks
+│   └── ...          # install-apply, uninstall, doctor, devendor-gstack
+├── tests/           # 14 files, run by the pre-commit gate
+├── templates/
+│   └── git-hooks/   # pre-commit + commit-msg, installed into a clone
+├── .archive/        # every removal, kept reversible
+└── install.sh
 ```
 
-## v3 Architecture
+`commands/`, `pipeline/` and `frameworks/` were removed in v5 (`416e603`). The
+first two were never in the installer's copy map — Claude Code had never read a
+byte of either. `commands/` was installed and broken: `/go` chained to 17
+commands, ten of which did not exist.
 
-ftitos-claude-code v3 implements the 8-layer factory from `FACTORY-BLUEPRINT.md`:
+## The rule that governs this repo
 
-| Layer | Component | Status |
-|-------|-----------|--------|
-| L0 Doctrine | AGENTS.md-as-ToC, docs/ layout | `templates/AGENTS.md` |
-| L1 Work Ledger | Beads (hash-IDs, atomic claims) | `skills/beads-workflow/` |
-| L2 Loop Engine | /goal + ralph-loop + fresh-context runner | `skills/loop-engine/` |
-| L3 Verification | 4-gate stack (deterministic → mutation → PBT → blind judge) | `skills/blind-judge/`, `skills/mutation-testing/`, `skills/property-based-testing/` |
-| L4 Fleet | Refinery merge-queue + Witness/Deacon watchdog | `agents/refinery.md`, `agents/witness.md` |
-| L5 Memory | Engram advanced (progressive disclosure, Seance) | `skills/engram-advanced/` |
-| L6 Safety | cc-safety-net + security-guidance + cache retention | `hooks/scripts/cc-safety-net.js`, `rules/security-guidance.md` |
-| L7 Specs | OpenSpec (delta-specs) + EARS syntax | `skills/openspec/` |
-| L8 Evals | 20 golden tasks + Harbor harness + SWE-smith | `tests/eval-harness/` |
+**Every failure becomes a hook, or it does not become anything.** (Hashimoto rule.)
 
-**Key philosophy (Hashimoto rule):** Every observed agent failure becomes a permanent engineered fix — a sign, lint, hook, or tool. Grow the harness only from observed failures; throw away configuration that doesn't earn its tokens.
+A rule written in markdown is a rule the model can skip. Before adding a `rules/` entry,
+check whether the same guarantee can be made by a script in `hooks/scripts/`. If it can,
+write the script instead — and write its test first.
 
-**Economics:** factory throughput = parallel lanes × loop reliability × verification strength ÷ human attention
+Two live examples, both recovered from `~/.claude` during the v4 audit after they were
+fixed in the field and never committed back:
 
-## How
+- `cc-safety-net.js` blocks bare `git stash pop`. The stash stack is repo-global and shared
+  across worktrees; a bare pop applied another session's WIP into a clean tree and produced
+  26 conflicted files.
+- `stop-verify.js` resolves ruff/mypy/pytest from the project `.venv`. A Homebrew pytest on
+  a different Python produced 188 phantom collection errors on every Stop event.
 
-### Development
+If you fix something in `~/.claude`, commit it here the same day. v3 lost both of these for
+two months because nobody did.
+
+The reverse direction leaks too, and it is the one nobody notices: `install-apply.js`
+skips any file that already exists, so a hook fixed *here* never reaches `~/.claude`
+unless you pass `--force` or copy it yourself. On 2026-09-14 the live `cc-safety-net.js`
+was two fixes behind this repo and blocked a legitimate commit; the repo copy had been
+correct the whole time. Until the installer distinguishes "already present" from
+"present and stale", verify the live copy after changing a hook:
 
 ```bash
-node tests/run-all.js           # Run tests
-node scripts/ci/validate-agents.js
-node scripts/ci/validate-skills.js
-node scripts/ci/validate-hooks.js
-./install.sh --dry-run          # Preview install
+diff hooks/scripts/<name>.js ~/.claude/scripts/hooks/<name>.js
 ```
 
-### Conventions
+## Conventions
 
 - Zero external dependencies. Node.js built-ins only.
-- All paths are relative. No hardcoded absolute paths.
-- Every agent file must have content (>10 chars).
-- Every skill directory must have a SKILL.md with frontmatter (name, description).
-- hooks.json must be valid JSON with each entry having a `type` field.
+- Every hook script gets a `tests/*.test.js` written before the script.
+- Every skill directory needs `SKILL.md` with `name` and `description` frontmatter.
+- `hooks.json` must be valid JSON, every entry needs a `type`.
+- Removals go to `.archive/`, never `rm`.
 
-### Adding Content
+## Budget
 
-- **New agent**: Add `agents/agent-name.md` with role description and instructions.
-- **New skill**: Create `skills/skill-name/SKILL.md` with frontmatter and instructions.
-- **New rule**: Add to `rules/` as a `.md` file.
-- **New hook**: Add entry to `hooks/hooks.json` and script to `hooks/scripts/`.
+Two instruments, and you want both.
+
+```bash
+node scripts/doctor.js                      # ceiling: fails past 8,000 tokens
+node scripts/ci/always-on-budget.js         # per file, against a baseline
+node scripts/ci/always-on-budget.js --write # record deliberate growth
+```
+
+The ceiling catches disasters. The baseline catches creep — the 200-token
+description edit that never trips a ceiling but spends the budget just as surely.
+Growth fails with the file and the delta named; recording it lands in review as a
+one-line diff stating the new cost.
+
+v4 also capped the skill count at 8. That was a proxy, and it was wrong in both
+directions: it blocked a 61-token skill while unbounded description growth passed.
+The count is no longer asserted.
+
+What the measurement showed first: `rules/*.md` is 57% of the always-on surface.
+The skills are the cheap part.
+
+## What the gates actually are
+
+Three of them, and each exists because the previous one could be walked around.
+
+| Gate | Enforces |
+|---|---|
+| `.git/hooks/pre-commit` | 14 test files + doctor |
+| `.git/hooks/commit-msg` | a `fix:`/`feat:` commit carries a regression test |
+| `block-no-verify.js` | that the two above cannot be skipped |
+
+The third is the load-bearing one. Before it, every gate here was optional —
+`--no-verify`, or `-c core.hooksPath=`, and none of it ran.
+
+## Development
+
+```bash
+node tests/run-all.js
+node scripts/doctor.js
+./install.sh --dry-run
+```

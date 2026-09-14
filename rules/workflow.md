@@ -1,28 +1,43 @@
-# Workflow — Development + Git
+---
+trigger: always_on
+---
 
-## Development Order of Operations
+# Workflow
 
-1. **Research first**: Search GitHub, npm/PyPI, official docs before writing new code. Don't reinvent what exists.
-2. **Plan**: Write a brief plan (what, how, edge cases) before touching code. Align with the user on approach.
-3. **TDD**: Write failing tests first. No implementation before a red test exists.
-4. **Implement**: Minimum code to make tests green. No speculative features.
-5. **Review**: Run linting, type checks, and security scan. Fix all errors before proceeding.
-6. **Commit**: Atomic conventional commit per task.
-7. **No dev servers outside tmux**: All long-running processes must run in a named tmux session.
-8. **No half-finished work**: Never leave the codebase in a broken state. Each task must leave things working.
+## Order of operations
 
-## Git Conventions
+1. **Research** — search GitHub, npm/PyPI, official docs before writing new code.
+2. **Plan** — brief plan (what, how, edge cases). Align before touching code.
+3. **TDD** — failing test first (RED), minimum code to pass (GREEN), then refactor. Never write tests after the fact.
+4. **Implement** — no speculative features.
+5. **Review** — lint, type check, security scan. Fix all errors before proceeding.
+6. **Commit** — atomic conventional commit per task.
 
-- **Conventional commits**: All commits use the format `type(scope): message`.
-  - `feat:` — new feature
-  - `fix:` — bug fix
-  - `refactor:` — restructuring without behavior change
-  - `docs:` — documentation only
-  - `test:` — adding or updating tests
-  - `chore:` — tooling, deps, config
+No dev servers outside tmux. Never leave the codebase broken — each task ends working.
 
-- **Atomic commits**: One logical change per commit. Never bundle unrelated changes.
-- **No secrets in commits**: Scan diff before committing. Never commit `.env`, credentials, or tokens.
-- **PR workflow**: All non-trivial changes go through a PR. Review diff before opening. Keep PRs focused — one concern per PR.
-- **No force push to main/master**: Always confirm before any destructive git operation.
-- **Branch naming**: `feat/description`, `fix/description`, `chore/description`.
+## Testing
+
+- 80% minimum coverage before a task is done. Measure it; don't assume.
+- Unit tests for pure logic, integration for service boundaries, E2E for critical flows.
+- Mock at system boundaries only (HTTP, DB, filesystem). Never mock internal modules.
+- Name tests `test_<what>_<when>_<expected>`.
+- No flaky tests — fix or quarantine anything intermittent.
+- pytest for Python. Every number-generating function gets exhaustive known-input tests.
+
+## Git
+
+- Conventional commits: `feat:` `fix:` `refactor:` `docs:` `test:` `chore:` — `type(scope): message`.
+- One logical change per commit. Never bundle unrelated changes.
+- Branches: `feat/…`, `fix/…`, `chore/…`.
+- Scan the diff before committing. Never commit `.env`, credentials, or tokens.
+- Non-trivial changes go through a PR, one concern per PR.
+- Never force-push to main/master. Confirm before any destructive git operation.
+- Never `git stash pop` bare — use `git stash apply stash@{n}` with an explicit ref (the stash stack is shared across worktrees).
+
+## Agents
+
+- Batch independent agent calls in one message. Never run them sequentially.
+- Fresh context per agent: CONTEXT.md + task description only. Never pass session history.
+- Use subagents to keep large search/analysis output out of the main context.
+- Never duplicate a search an agent is already running.
+- Never mark a task complete without validation. Require proof.

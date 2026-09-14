@@ -5,7 +5,10 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const VERSION = "2.0.0";
+// Read from the VERSION file rather than a literal. Hardcoding it meant the
+// installer stamped every manifest "2.0.0" while the repo moved to 4.0.0, and
+// doctor's version-match check then failed against an install that was current.
+const VERSION = fs.readFileSync(path.join(__dirname, "..", "VERSION"), "utf8").trim();
 const MANIFEST_NAME = ".ftitos-cc-manifest.json";
 
 const COPY_MAP = [
@@ -14,16 +17,12 @@ const COPY_MAP = [
   { src: "rules", dest: ".claude/rules", exclude: ["python", "typescript"] },
   { src: "rules/python", dest: ".claude/rules/python" },
   { src: "rules/typescript", dest: ".claude/rules/typescript" },
-  { src: "commands", dest: ".claude/commands", exclude: ["project"] },
-  { src: "commands/project", dest: ".claude/commands/project" },
   { src: "hooks/scripts", dest: ".claude/scripts/hooks" },
 ];
 
 const CORE_ONLY_MAP = [
   { src: "agents", dest: ".claude/agents" },
   { src: "rules", dest: ".claude/rules", exclude: ["python", "typescript"] },
-  { src: "commands", dest: ".claude/commands", exclude: ["project"] },
-  { src: "commands/project", dest: ".claude/commands/project" },
   { src: "hooks/scripts", dest: ".claude/scripts/hooks" },
 ];
 

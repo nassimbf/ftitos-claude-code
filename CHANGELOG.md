@@ -1,5 +1,94 @@
 # Changelog
 
+## [4.0.0] — 2026-08-12
+
+The evidence pass. v3 was audited against 7,077 real prompts spanning 2026-04-01 to
+2026-08-11. Everything with no usage behind it was removed.
+
+### What the audit found
+
+- 26 of 32 skills: **zero invocations** in 4.5 months.
+- 8 of 15 commands: zero invocations (`/verify`, `/tdd`, `/learn`, `/code-review`,
+  `/build-fix`, `/project:ship`, `/project:constitution`, `/project:analyze`).
+- 3 agent types dispatched out of 23 shipped.
+- The `Skill` tool: never invoked once across the sampled transcripts.
+- Always-on context: **22,162 tokens per session** before the user typed anything.
+- 8 hooks registered twice in `settings.json` (absolute-path and `$HOME` variants both
+  present) — every edit wrote two backups and ran GateGuard twice.
+- `rules/standards.md` contained `coding-style.md`, `anti-slop.md` and `performance.md`
+  verbatim; `quality.md` contained `testing.md` and `security.md`. ~10 KB of duplicate text
+  injected into every session.
+- The v2 doctor reported "12 OK, system healthy" against all of the above.
+
+### Added
+
+- `hooks/scripts/pre-secrets-block.js` — PreToolUse guard blocking writes to `.env`,
+  `*.pem`, `*.key`, `id_rsa`, `credentials.*` and content carrying `sk-`, `ghp_`, `AKIA`,
+  PEM blocks, or a password/token assigned a real literal. Allows `*.example`/`*.template`
+  and env-var references. Secret handling was previously advice in three separate rules
+  files, which had never stopped anything.
+- `tests/secrets-block.test.js` — 8 behaviour tests, written before the hook.
+
+### Changed
+
+- `scripts/doctor.js` rewritten. It now fails on duplicate hook registrations, hooks
+  pointing at scripts that do not exist, repo/install version drift, and always-on context
+  over 8,000 tokens. It no longer counts files it did not install and calls that health.
+- `rules/` 16 files → 3 (`code.md`, `workflow.md`, `security.md`), 32,489 → 5,570 bytes.
+- Review Army and Review Council prompts moved out of always-on `rules/` and into
+  `commands/project/review.md`. ~10 KB that loads only when the command runs.
+- `skills/TIER.md` replaced. Tiers were fiction — Claude Code scans every installed skill's
+  description every session regardless of tier. Replaced with admission and removal criteria.
+- `hooks/hooks.json` 45 registrations → 15, de-duplicated.
+
+### Recovered
+
+Two field fixes existed only in `~/.claude` and were never committed back to v3. Both are
+now in the repo:
+
+- `cc-safety-net.js` — blocks bare `git stash pop`. The stash stack is repo-global; a bare
+  pop applied another session's WIP into a clean worktree and produced 26 conflicted files
+  (observed 2026-06-10, A3 phase1-tools).
+- `stop-verify.js` — resolves ruff/mypy/pytest from the project `.venv`, and skips a
+  verifier rather than falling back to a global binary. A Homebrew pytest on a different
+  Python produced 188 phantom collection errors on every Stop event (observed 2026-06-10, A3).
+
+### Removed
+
+Everything below moved to `.archive/`, not deleted.
+
+- 26 skills with zero invocations, including the entire L1/L3/L7 layer set
+  (`beads-workflow`, `blind-judge`, `mutation-testing`, `property-based-testing`,
+  `openspec`, `harness-evals`, `engram-advanced`, `verification-loop`, `tdd-workflow`,
+  `writing-plans`, `executing-plans`, `subagent-driven-development`, `safety-guard`,
+  `security-review`, `api-design`, `backend-patterns`, `docker-patterns`, `e2e-testing`,
+  `canary-watch`, `database-migrations`, `git-workflow`, `python-testing`,
+  `incremental-implementation`, `context-engineering`, `brain-merge`,
+  `dispatching-parallel-agents`).
+- 17 agents + the 5 `agents-ccg` team agents.
+- 6 zero-use commands.
+- 13 duplicate or maintenance-only rules files.
+- 30 hook registrations, including the brain hooks (`brain-pretooluse` ran on every Grep
+  and Glob), `veto-rate-logger`, `check-console-log`, `evaluate-session` and 8 duplicates.
+
+### Honest status
+
+- The L8 eval harness still has 1 real task (`task-001`) and 19 prompt stubs without
+  `checks.py`. The stubs are archived rather than shipped as if they were a harness.
+- The v3 test suite validated file shape, not behaviour. `secrets-block.test.js` is the
+  first test in this repo that exercises a hook end to end. The other four remain structural.
+
+### Result
+
+| | v3 | v4 |
+|---|---|---|
+| Always-on context | ~22,162 tokens | ~5,798 tokens (−74%) |
+| Skills | 32 | 6 |
+| Agents | 23 | 6 |
+| Commands | 15 | 9 |
+| Rules bytes | 32,489 | 5,570 |
+| Hook registrations | 45 | 15 |
+
 ## [3.0.0] — 2026-06-10
 
 ### Architecture
