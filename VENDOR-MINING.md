@@ -89,6 +89,28 @@ is inert unless the PreToolUse hook is installed.**
 Decision: complete the install or delete `~/projects/A3/.claude/skills/graphify/`. A skill
 documenting `/graphify` against a nonexistent graph is a trap.
 
+**Cost of completing it.** The ~39-token frontmatter claim is confirmed (140 bytes), but a
+*working* install also wants `always_on/claude-md.md` (772 B) in CLAUDE.md, so true always-on
+is **~230 tokens** — 6× advertised, and still inside the ceiling (6,239 → ~6,470). The body is
+~14k tokens on invoke. The real cost is not tokens: it is ~30 tree-sitter wheels plus
+networkx/numpy/rapidfuzz, a per-machine Python install rather than a file copy.
+
+**Measure the rebuild before wiring it to a commit hook.** Updates are incremental off an AST
+cache (`cli.py:409-506`), but `post-checkout` forces a **full** rebuild (`hooks.py:257`), and
+`BENCHMARKS.md` reports cost only in dollars and tokens — **wall-clock rebuild time is
+unmeasured.** A3 is ~7,100 source files across 33 worktrees. Time it first.
+
+**Its evidence is thinner than it looks.** The headline benchmarks (LOCOMO n=300,
+LongMemEval-S n=50) measure *memory*, not code. The code result is ERPNext at **n=6**:
+70.8% grep baseline → 82.0%, at ~140k tokens per query. A six-question sample is an
+indication, not a finding.
+
+**Where it actually beats grep:** transitive reachability and call-graph work, impact analysis
+(`graphify path A B`), cross-file type and import resolution. Grep structurally cannot do
+transitive closure. Grep is better for known symbols, config and string hunts, any named file,
+and anywhere correctness beats recall — grep is never stale. Orientation is already covered by
+our `codebase-onboarding` skill.
+
 ## Port as code — tests first
 
 | From | Item | Why |
@@ -242,6 +264,24 @@ upstream is our own de-vendoring. One property to preserve: de-vendoring **strip
 re-vendor would reintroduce them. Of 61 skills, only `browse`, `careful` and `freeze` ship
 executable `bin/`; the rest is prose. No other skill clears the Hashimoto bar.
 
+## Behaviour-steering text shipped as documentation
+
+Two of the thirteen tripped the harness's instruction-shaped-content detector during mining.
+Both were benign on inspection, but the property is worth tracking on any vendored repo,
+because a file that reads as documentation to a human reads as instruction to an agent.
+
+- **graphify** ships `AGENTS.md` and `always_on/*.md` written as imperatives aimed at an agent
+  ("Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md"),
+  designed to be pasted into CLAUDE.md, and `cli.py:42` injects text into a live agent turn via
+  `additionalContext`. That is how the tool works — but installing it means adopting text whose
+  purpose is to redirect the agent, and the `additionalContext` path means upstream can change
+  what your agent is told without changing anything you reviewed.
+- **claude-code-best-practice** hit the same detector by quoting a `settings.json`. No finding.
+
+The rule this suggests: when vendoring, review `AGENTS.md`, `CLAUDE.md`, `always_on/` and any
+`additionalContext` injection as **code that runs in the model's context**, not as prose. Diff
+them on every re-pin.
+
 ## Provenance
 
 All shallow clones taken 2026-09-14.
@@ -253,7 +293,7 @@ All shallow clones taken 2026-09-14.
 | gstack | `github.com/garrytan/gstack` | MIT (pin `71f6048`, v1.84.1.0) |
 | ponytail | `github.com/DietrichGebert/ponytail` | MIT |
 | rtk | `github.com/rtk-ai/rtk` | Apache-2.0 |
-| graphify | `github.com/Graphify-Labs/graphify` | see `NOTICE` — tail pending |
+| graphify | `github.com/Graphify-Labs/graphify` | Apache-2.0 (`NOTICE` resolves the dual files: Apache governs, `LICENSE-MIT` is historical provenance for pre-relicensing contributions) |
 | ecc | `github.com/affaan-m/ecc` | MIT |
 | caveman | `github.com/JuliusBrussee/caveman` | MIT + BSL-1.1 on `engine/ rewriter/ proxy/ browse/ mcp/ shrink/ mem/` |
 | learn-claude-code | `github.com/shareAI-lab/learn-claude-code` | MIT |
