@@ -63,7 +63,7 @@ not by review — which is the Hashimoto rule doing what it exists for.
 - The agent count cap. Same proxy mistake v5 removed for skills: it would reject a
   30-token agent while an unbounded description rewrite passed untouched. The budget
   decides.
-- The orphaned `graphify` skill in A3 — skill present, no graph, no hooks, no wiring.
+- An orphaned `graphify` skill install — skill present, no graph, no hooks, no wiring.
 
 Tests 14 → 20 files. Agents 8 → 14. Always-on 6,239 → ~6,600 of 8,000.
 
@@ -125,10 +125,10 @@ now in the repo:
 
 - `cc-safety-net.js` — blocks bare `git stash pop`. The stash stack is repo-global; a bare
   pop applied another session's WIP into a clean worktree and produced 26 conflicted files
-  (observed 2026-06-10, A3 phase1-tools).
+  (observed 2026-06-10).
 - `stop-verify.js` — resolves ruff/mypy/pytest from the project `.venv`, and skips a
   verifier rather than falling back to a global binary. A Homebrew pytest on a different
-  Python produced 188 phantom collection errors on every Stop event (observed 2026-06-10, A3).
+  Python produced 188 phantom collection errors on every Stop event (observed 2026-06-10).
 
 ### Removed
 

@@ -12,7 +12,7 @@ The "one repo to rule them all" is not built by installing more components. The 
 
 You already own more harness surface than almost anyone (46 agents, 95 skills, 51 commands, 15 hooks, 4 frameworks, 4 memory engines). The winning move is **consolidate + adopt 4 things + absorb ~12 patterns + cut aggressively**, organized into 8 layers below.
 
-The single most-repeated warning across all sources: *the same model writing code, tests, and review converges on shared blind spots.* Every credible 2026 system separates the verifier's context from the builder's (blind judges, holdout scenarios, write-tool-less reviewers, deterministic finals). That is the moat. A3's deterministic pipeline + number fence already embodies this philosophy — the factory generalizes it.
+The single most-repeated warning across all sources: *the same model writing code, tests, and review converges on shared blind spots.* Every credible 2026 system separates the verifier's context from the builder's (blind judges, holdout scenarios, write-tool-less reviewers, deterministic finals). That is the moat. A deterministic pipeline with a hard numeric boundary already embodies this philosophy — the factory generalizes it.
 
 ---
 
@@ -27,7 +27,7 @@ The single most-repeated warning across all sources: *the same model writing cod
 | github/spec-kit v0.10.0 | 110,814 | today | Keep derived pieces (/project:analyze); don't re-adopt wholesale |
 | thedotmack/claude-mem | 81,475 | today | Absorb patterns into Engram; do NOT install |
 | ruvnet/ruflo (claude-flow) | 58,696 | today | **SKIP** — stars ≠ practitioner trust |
-| Fission-AI/OpenSpec | 53,826 | today | **ADOPT for A3** (brownfield delta-specs) |
+| Fission-AI/OpenSpec | 53,826 | today | **ADOPT** (brownfield delta-specs) |
 | vercel-labs/agent-browser | 35,673 | recent | **ADOPT** (UI verification, ~82% less context than Playwright MCP) |
 | anthropics/claude-plugins-official | 29,739 | today | **ADOPT: ralph-loop + security-guidance**; absorb hookify pattern |
 | getzep/graphiti | 27,223 | today | Absorb bi-temporal edges into memory merge |
@@ -45,8 +45,8 @@ The single most-repeated warning across all sources: *the same model writing cod
 | AnandChowdhary/continuous-claude | 1,350 | recent | Absorb: CI-as-fitness, relay notes, completion vote |
 | boxed/mutmut | 1,316 | recent | **ADOPT** (Python mutation gate) |
 | umputun/ralphex | 1,252 | today | Absorb: fresh-context loop, validation-commands-in-plan |
-| gastownhall/gascity | 894 | today | Watch — re-evaluate at GA (audit-trail framing = A3 market) |
-| SWE-bench/SWE-smith | 671 | recent | Adopt to auto-generate A3 eval tasks |
+| gastownhall/gascity | 894 | today | Watch — re-evaluate at GA |
+| SWE-bench/SWE-smith | 671 | recent | Adopt to auto-generate eval tasks |
 | mmaaz-git/agentic-pbt | 68 | Nov 25 | Absorb the Anthropic red-team PBT recipe |
 
 Debunked/confirmed-tiny from prior session's report: goal-cc 6★, cc-safe-setup 46★, claude-loop 1★, ralph-mcp 2★ — patterns only, never installs. Frozen/commercialized tier (vibe-kanban, crystal→Nimbalyst, claude-squad): skip.
@@ -81,7 +81,7 @@ From OpenAI (~1M LOC, 0 manually-written lines) + Anthropic + HumanLayer (ETH da
 Spotify production law: **deterministic verifiers first, LLM judge last; judge sees only (diff, original task); success is silent, failure surfaces** (their judge vetoes ~25%, agents self-correct ~50% of vetoes — track veto-rate as fleet KPI).
 - **Gate 0 deterministic**: ruff → mypy → pytest via Stop hook; swallow passing output, surface only errors, exit-2 re-engagement.
 - **Gate 1 mutation** (test-quality oracle): mutmut with Trail-of-Bits campaign design — tiered mutants (revert/raise > comment-out > operator swaps), two-phase (targeted tests first, full suite on survivors), DB-backed triage, **skeptical-agent rule**: surviving mutant → agent must get external confirmation before writing the killing test (else you crystallize bugs into the suite).
-- **Gate 2 property-based**: Anthropic red-team agentic-PBT recipe — infer invariants, write Hypothesis tests, reflect "real bug or bad test?" A3's Decimal/reconciliation invariants (Anlagenspiegel must reconcile exactly) are the ideal target.
+- **Gate 2 property-based**: Anthropic red-team agentic-PBT recipe — infer invariants, write Hypothesis tests, reflect "real bug or bad test?" Decimal and reconciliation invariants that must hold exactly are the ideal target.
 - **Gate 3 blind judge**: holdout acceptance scenarios in a path the builder is **permission-denied from reading** (uglycode pattern); reviewer agents whose tool manifest **excludes Edit/Write** (wow-harness); evidence files (`progress.json`) over self-report; convergence loop with stuck-detection.
 - **Gate 4 UI**: agent-browser smoke loop post-build; Playwright planner/generator/healer for the persistent E2E suite.
 - Keep Review Army + Council (already strong, confidence-gated, anti-anchoring) — wired *after* deterministic gates.
@@ -108,12 +108,12 @@ Spotify production law: **deterministic verifiers first, LLM judge last; judge s
 - Isolation doctrine (Huntley): never bare `--dangerously-skip-permissions` on a host with credentials — worktree/Docker blast-radius containment.
 
 ### L7 — Specs
-- **OpenSpec** for A3 (delta-specs against a living source-of-truth; brownfield-native; ~⅓ the markdown of spec-kit) — the contract the blind judge verifies against.
+- **OpenSpec** (delta-specs against a living source-of-truth; brownfield-native; ~⅓ the markdown of spec-kit) — the contract the blind judge verifies against.
 - Keep spec-kit-derived `/project:analyze` (severity-tiered cross-artifact consistency).
 - **EARS syntax** (cc-sdd) for acceptance criteria — most machine-checkable requirement format.
 
 ### L8 — Harness Evals + the Hashimoto Rule
-- ~20 golden tasks (prompt + repo state + deterministic `checks.py`), Harbor-style; SWE-smith to auto-generate regression tasks from A3 itself; 5-run protocol; judge calibrated against human labels; CI gate on >0.3 regression vs baseline.
+- ~20 golden tasks (prompt + repo state + deterministic `checks.py`), Harbor-style; SWE-smith to auto-generate regression tasks from the codebase itself; 5-run protocol; judge calibrated against human labels; CI gate on >0.3 regression vs baseline.
 - **Hashimoto rule** (the operating principle of the whole factory): *every observed agent failure becomes a permanent engineered fix — a sign, lint, hook, or tool — such that the agent never makes that mistake again.* Grow the harness only from observed failures; throw away configuration that doesn't earn its tokens.
 - Scheduled entropy GC: doc-gardening, slop-scanning vs golden principles, small auto-mergeable refactor PRs (OpenAI's continuous debt paydown).
 
@@ -137,11 +137,11 @@ Spotify production law: **deterministic verifiers first, LLM judge last; judge s
 
 ## 4. Roadmap
 
-**Phase 0 — Today (installs, ~1h):** ralph-loop + security-guidance plugins · cc-safety-net · `bd init --stealth` in A3 · cache retention policy · dedupe skills.
+**Phase 0 — Today (installs, ~1h):** ralph-loop + security-guidance plugins · cc-safety-net · `bd init --stealth` per project · cache retention policy · dedupe skills.
 
-**Phase 1 — Week 1 (verification moat, A3-first):** silent-success Stop hook (ruff/mypy/pytest) · mutmut with ToB two-phase config · agentic-PBT command over `saa.engine.areas.fixed_assets` · blind-judge gate with permission-denied holdout scenarios · veto-rate logging.
+**Phase 1 — Week 1 (verification moat):** silent-success Stop hook (ruff/mypy/pytest) · mutmut with ToB two-phase config · agentic-PBT command over the deterministic engine's core modules · blind-judge gate with permission-denied holdout scenarios · veto-rate logging.
 
-**Phase 2 — Week 2 (loop engine + doctrine):** fresh-context loop runner skill (dual exit gate, circuit breaker, error-gate, triple budget, relay notes) · AGENTS.md-as-ToC + docs/ layout in A3 · OpenSpec init.
+**Phase 2 — Week 2 (loop engine + doctrine):** fresh-context loop runner skill (dual exit gate, circuit breaker, error-gate, triple budget, relay notes) · AGENTS.md-as-ToC + docs/ layout per project · OpenSpec init.
 
 **Phase 3 — Weeks 3–4 (fleet + memory):** Refinery merge-queue agent for multi-worktree builds · Witness watchdog · agent-teams pilot on parallel FA specialists · Engram upgrades (timeline, seance, citations) · Graphify+GBrain merge with temporal edges · harness eval set (20 golden tasks).
 
@@ -153,7 +153,7 @@ Spotify production law: **deterministic verifiers first, LLM judge last; judge s
 
 ## 5. Economics & Philosophy Notes
 
-- Multi-agent ≈ 15× chat-level tokens (Anthropic); Gas Town field test ran ~$100/hr and merged a PR with failing tests — **throughput-over-precision is the wrong philosophy for A3**. Your factory is the opposite bet: verification supremacy ("Light Factory"), which happens to be exactly Gas City's enterprise pitch ("bring AI into my company and pass an audit trail") — i.e., your factory architecture and A3's product market are the same thesis.
+- Multi-agent ≈ 15× chat-level tokens (Anthropic); Gas Town field test ran ~$100/hr and merged a PR with failing tests — **throughput-over-precision is the wrong philosophy for the main codebase**. Your factory is the opposite bet: verification supremacy ("Light Factory"), which happens to be exactly Gas City's enterprise pitch ("bring AI into my company and pass an audit trail") — i.e., your factory architecture and the codebase's product market are the same thesis.
 - Human attention is the scarce resource. The compounding asset is not generated code but checked-in scaffolding — specs, plans, gates, lints, evals — "that makes the next million lines cheaper than the last" (OpenAI).
 - June 15, 2026 billing note: Agent SDK / `claude -p` moves to a separate credit pool for subscription users (documented in ralphex README) — factor into overnight-run planning.
 
