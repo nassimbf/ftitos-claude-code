@@ -3,6 +3,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { spawnSync } = require("child_process");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const SKILLS_DIR = path.join(REPO_ROOT, "skills");
@@ -22,14 +23,25 @@ if (fs.existsSync(SKILLS_DIR)) {
   const entries = fs.readdirSync(SKILLS_DIR, { withFileTypes: true });
   const skillDirs = entries.filter((e) => e.isDirectory());
 
-  // v4 asserts a ceiling. Claude Code scans every skill's description on every session,
-  // so an unused skill is a permanent tax — growth is the regression to catch.
-  const MAX_SKILLS = 8;
   assert(skillDirs.length > 0, "skills/ should contain at least one skill");
-  assert(
-    skillDirs.length <= MAX_SKILLS,
-    `skills/ should ship at most ${MAX_SKILLS} skills (found ${skillDirs.length}) — see skills/TIER.md admission criteria`
-  );
+
+  // v4 capped the COUNT at 8. That counts things instead of measuring the
+  // resource: it blocked a 66-token skill while a description growing by 400
+  // tokens passed unnoticed. What is scarce is always-on context, so v5 prices
+  // it directly — scripts/ci/always-on-budget.js, against a recorded baseline.
+  // The count is left unasserted on purpose; if eleven cheap skills fit the
+  // budget, eleven skills is the right number.
+  {
+    const res = spawnSync(
+      process.execPath,
+      [path.join(__dirname, "..", "scripts", "ci", "always-on-budget.js")],
+      { encoding: "utf8" }
+    );
+    assert(
+      res.status === 0,
+      `always-on budget exceeded:\n${res.stderr || res.stdout}`
+    );
+  }
 
   for (const dir of skillDirs) {
     const skillPath = path.join(SKILLS_DIR, dir.name);

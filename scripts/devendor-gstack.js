@@ -59,6 +59,12 @@ function walk(dir) {
 
     const before = fs.readFileSync(p, 'utf8');
     let text = before;
+
+    // `preamble-tier` gates a ~12k-token gstack-specific preamble (skill-start
+    // handshakes, onboarding directives, analytics appends). We neutralise those
+    // calls, so the field is dead metadata — and frontmatter is always-on, so
+    // dead metadata here is not free.
+    text = text.replace(/^preamble-tier:.*\r?\n/m, '');
     for (const [re, to] of RETARGET) {
       const hits = (text.match(re) || []).length;
       if (hits) { retargeted += hits; text = text.replace(re, to); }

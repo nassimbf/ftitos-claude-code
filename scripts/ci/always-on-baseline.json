@@ -1,0 +1,24 @@
+{
+  "totalTokens": 2443,
+  "sizes": {
+    "skills/TIER.md": 0,
+    "skills/browse/SKILL.md": 296,
+    "skills/build-phases/SKILL.md": 380,
+    "skills/code-review/SKILL.md": 198,
+    "skills/codebase-onboarding/SKILL.md": 290,
+    "skills/codex/SKILL.md": 245,
+    "skills/cso/SKILL.md": 256,
+    "skills/loop-engine/SKILL.md": 239,
+    "skills/qa/SKILL.md": 277,
+    "skills/spec-driven-development/SKILL.md": 264,
+    "agents/architect.md": 286,
+    "agents/code-reviewer.md": 284,
+    "agents/debugger.md": 247,
+    "agents/planner.md": 297,
+    "agents/python-reviewer.md": 273,
+    "agents/security-reviewer.md": 370,
+    "rules/code.md": 1971,
+    "rules/security.md": 1562,
+    "rules/workflow.md": 2037
+  }
+}
