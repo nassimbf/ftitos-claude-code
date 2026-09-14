@@ -24,6 +24,9 @@ const assert = require('assert');
 const {
   isShipCommand,
   scanDiff,
+  manifestsInDiff,
+  parseNpmAudit,
+  parsePipAudit,
 } = require('../hooks/scripts/ship-gate.js');
 
 // A diff line is only interesting when it is ADDED (+). Removing a console.log
@@ -109,6 +112,88 @@ const cases = [
     const [finding] = scanDiff(added('console.log("x")'));
     assert.strictEqual(typeof finding.line, 'number');
     assert(finding.rule, 'finding must name the rule that fired');
+  }],
+
+  // --- dependency audit -------------------------------------------------
+  //
+  // rules/security.md: "no known critical CVEs in direct dependencies
+  // (npm audit / pip-audit before ship)". That was prose. The audit itself is
+  // slow — seconds for npm, longer for pip — so it runs ONLY when the outgoing
+  // diff actually touches a manifest. Most pushes do not, which keeps the
+  // common path fast; a gate that always costs seconds is a gate people route
+  // around, same reasoning as leaving the test suite out.
+
+  ['detects which ecosystems need auditing from the diff', () => {
+    const npmDiff = 'diff --git a/package.json b/package.json\n+++ b/package.json';
+    assert.deepStrictEqual(manifestsInDiff(npmDiff), ['npm']);
+
+    const pyDiff = 'diff --git a/requirements.txt b/requirements.txt\n+++ b/requirements.txt';
+    assert.deepStrictEqual(manifestsInDiff(pyDiff), ['pip']);
+
+    const lockDiff = 'diff --git a/package-lock.json b/package-lock.json';
+    assert.deepStrictEqual(manifestsInDiff(lockDiff), ['npm']);
+
+    for (const f of ['pyproject.toml', 'uv.lock', 'Pipfile']) {
+      assert.deepStrictEqual(manifestsInDiff(`diff --git a/${f} b/${f}`), ['pip'], f);
+    }
+  }],
+
+  ['a diff with no manifest changes triggers no audit', () => {
+    const diff = 'diff --git a/src/app.ts b/src/app.ts\n+const x = 1;';
+    assert.deepStrictEqual(manifestsInDiff(diff), []);
+  }],
+
+  ['reports both ecosystems when both manifests move', () => {
+    const diff = [
+      'diff --git a/package.json b/package.json',
+      'diff --git a/pyproject.toml b/pyproject.toml',
+    ].join('\n');
+    assert.deepStrictEqual(manifestsInDiff(diff).sort(), ['npm', 'pip']);
+  }],
+
+  ['parses npm audit and reports only critical and high', () => {
+    const report = JSON.stringify({
+      vulnerabilities: {
+        'bad-pkg': { name: 'bad-pkg', severity: 'critical' },
+        'meh-pkg': { name: 'meh-pkg', severity: 'high' },
+        'fine-pkg': { name: 'fine-pkg', severity: 'moderate' },
+        'whatever': { name: 'whatever', severity: 'low' },
+      },
+    });
+    const findings = parseNpmAudit(report);
+    const names = findings.map(f => f.package).sort();
+    assert.deepStrictEqual(names, ['bad-pkg', 'meh-pkg']);
+    // Moderate and low are real but not ship-blocking; blocking on them would
+    // make the gate fire constantly and get switched off.
+    assert(!names.includes('fine-pkg'));
+  }],
+
+  ['npm audit with no vulnerabilities yields nothing', () => {
+    assert.deepStrictEqual(parseNpmAudit(JSON.stringify({ vulnerabilities: {} })), []);
+  }],
+
+  // npm audit exits non-zero when it finds something AND when it errors. A
+  // parser that throws on unparseable output would turn a broken audit into a
+  // blocked push, so it must degrade to "no findings" instead.
+  ['unparseable audit output is not a finding', () => {
+    assert.deepStrictEqual(parseNpmAudit('not json'), []);
+    assert.deepStrictEqual(parseNpmAudit(''), []);
+    assert.deepStrictEqual(parseNpmAudit(JSON.stringify({ error: { code: 'ENOLOCK' } })), []);
+    assert.deepStrictEqual(parsePipAudit('not json'), []);
+    assert.deepStrictEqual(parsePipAudit(''), []);
+  }],
+
+  ['parses pip-audit findings', () => {
+    const report = JSON.stringify({
+      dependencies: [
+        { name: 'requests', version: '2.0.0', vulns: [{ id: 'GHSA-xxxx', fix_versions: ['2.31.0'] }] },
+        { name: 'safe-lib', version: '1.0.0', vulns: [] },
+      ],
+    });
+    const findings = parsePipAudit(report);
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0].package, 'requests');
+    assert(findings[0].id.includes('GHSA'), 'finding must carry the advisory id');
   }],
 ];
 

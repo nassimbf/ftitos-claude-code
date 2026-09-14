@@ -105,6 +105,95 @@ function scanDiff(diff) {
   return findings;
 }
 
+// --- dependency audit ----------------------------------------------------
+//
+// rules/security.md requires "no known critical CVEs in direct dependencies
+// (npm audit / pip-audit before ship)". Auditing costs seconds, so it runs only
+// when the outgoing diff actually touches a manifest. Most pushes do not, which
+// keeps the common path fast — the same reasoning that leaves the test suite out.
+
+const MANIFESTS = [
+  { ecosystem: 'npm', re: /\b(?:package\.json|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml)\b/ },
+  { ecosystem: 'pip', re: /\b(?:requirements(?:-[\w.]+)?\.txt|pyproject\.toml|uv\.lock|Pipfile(?:\.lock)?|poetry\.lock)\b/ },
+];
+
+// Only file headers decide this. Scanning the body would let a diff that merely
+// *mentions* package.json trigger a full audit.
+function manifestsInDiff(diff) {
+  const headers = String(diff || '')
+    .split('\n')
+    .filter(l => l.startsWith('diff --git') || l.startsWith('+++') || l.startsWith('---'))
+    .join('\n');
+  return MANIFESTS.filter(m => m.re.test(headers)).map(m => m.ecosystem);
+}
+
+// Both parsers degrade to "no findings" on anything unreadable. These tools exit
+// non-zero when they find vulnerabilities AND when they fail (no lockfile, no
+// network, not installed), so a parser that threw would turn a broken audit into
+// a blocked push — a gate that fails shut on its own infrastructure is one the
+// user disables within a day.
+function safeJson(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+// Moderate and low are real but not ship-blocking. Blocking on them would fire
+// on nearly every install and train the user to bypass the gate.
+const BLOCKING_SEVERITIES = new Set(['critical', 'high']);
+
+function parseNpmAudit(raw) {
+  const data = safeJson(raw);
+  if (!data || !data.vulnerabilities) return [];
+  return Object.values(data.vulnerabilities)
+    .filter(v => v && BLOCKING_SEVERITIES.has(String(v.severity).toLowerCase()))
+    .map(v => ({ ecosystem: 'npm', package: v.name, severity: v.severity, id: v.name }));
+}
+
+function parsePipAudit(raw) {
+  const data = safeJson(raw);
+  if (!data || !Array.isArray(data.dependencies)) return [];
+  return data.dependencies.flatMap(dep =>
+    (dep.vulns || []).map(v => ({
+      ecosystem: 'pip',
+      package: dep.name,
+      severity: 'known-vulnerability',
+      id: v.id || 'unknown',
+      fix: (v.fix_versions || []).join(', '),
+    }))
+  );
+}
+
+function runTool(bin, args, cwd) {
+  try {
+    return execFileSync(bin, args, {
+      encoding: 'utf8',
+      cwd,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 60_000,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+  } catch (err) {
+    // Non-zero exit is the normal path when findings exist — the report is still
+    // on stdout. A missing binary yields no stdout, which parses to [].
+    return (err && err.stdout) ? String(err.stdout) : '';
+  }
+}
+
+function auditDependencies(ecosystems, cwd) {
+  const findings = [];
+  if (ecosystems.includes('npm')) {
+    findings.push(...parseNpmAudit(runTool('npm', ['audit', '--json'], cwd)));
+  }
+  if (ecosystems.includes('pip')) {
+    findings.push(...parsePipAudit(runTool('pip-audit', ['--format=json'], cwd)));
+  }
+  return findings;
+}
+
 function git(args) {
   try {
     return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
@@ -122,14 +211,27 @@ function outgoingDiff() {
   return git(['diff', '--unified=0', 'HEAD~1...HEAD']);
 }
 
-function formatBlock(findings) {
-  const shown = findings.slice(0, MAX_FINDINGS_SHOWN);
-  const lines = shown.map(f => `  [${f.kind}/${f.rule}] ${f.text}`);
-  const more = findings.length > shown.length
-    ? `\n  ...and ${findings.length - shown.length} more`
-    : '';
-  return `SHIP-GATE BLOCKED: ${findings.length} issue(s) in the diff about to be pushed.\n`
-    + `${lines.join('\n')}${more}\n`
+function formatBlock(findings, vulns) {
+  const parts = [];
+
+  if (findings.length) {
+    const shown = findings.slice(0, MAX_FINDINGS_SHOWN);
+    const lines = shown.map(f => `  [${f.kind}/${f.rule}] ${f.text}`);
+    const more = findings.length > shown.length
+      ? `\n  ...and ${findings.length - shown.length} more`
+      : '';
+    parts.push(`${findings.length} issue(s) in the diff about to be pushed:\n${lines.join('\n')}${more}`);
+  }
+
+  if (vulns.length) {
+    const lines = vulns.slice(0, MAX_FINDINGS_SHOWN)
+      .map(v => `  [${v.ecosystem}/${v.severity}] ${v.package}${v.fix ? ` — fixed in ${v.fix}` : ''} (${v.id})`);
+    parts.push(
+      `${vulns.length} known vulnerability(ies) in dependencies you changed:\n${lines.join('\n')}`
+    );
+  }
+
+  return `SHIP-GATE BLOCKED.\n${parts.join('\n\n')}\n`
     + 'Fix these, or if one is a false positive say so and the user can decide.';
 }
 
@@ -138,8 +240,15 @@ function main(raw) {
   const cmd = String(input.tool_input?.command || '');
   if (!isShipCommand(cmd)) return null;
 
-  const findings = scanDiff(outgoingDiff());
-  return findings.length ? formatBlock(findings) : null;
+  const diff = outgoingDiff();
+  const findings = scanDiff(diff);
+
+  // Only pay for the audit when a manifest actually moved. Most pushes do not
+  // touch one, so the common path stays as fast as the diff scan alone.
+  const ecosystems = manifestsInDiff(diff);
+  const vulns = ecosystems.length ? auditDependencies(ecosystems, process.cwd()) : [];
+
+  return (findings.length || vulns.length) ? formatBlock(findings, vulns) : null;
 }
 
 if (require.main === module) {
@@ -166,4 +275,11 @@ if (require.main === module) {
   });
 }
 
-module.exports = { isShipCommand, scanDiff, stripQuoted };
+module.exports = {
+  isShipCommand,
+  scanDiff,
+  stripQuoted,
+  manifestsInDiff,
+  parseNpmAudit,
+  parsePipAudit,
+};
