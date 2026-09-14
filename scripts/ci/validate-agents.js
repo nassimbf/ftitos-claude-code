@@ -8,8 +8,16 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const AGENTS_DIR = path.join(REPO_ROOT, "agents");
 const AGENTS_CCG_DIR = path.join(REPO_ROOT, "agents-ccg");
 
-// v4 caps the roster: each shipped agent costs context on every session.
-const MAX_AGENTS = 8;
+// v4 capped the roster at 8 because each agent costs context every session.
+// The cap was a proxy for the cost, and a bad one in both directions: it would
+// block a 30-token agent while an unbounded description rewrite on an existing
+// one passed untouched. v5 removed the identical cap on skills (c388e3f) and
+// priced the surface instead; the agent cap was simply missed in that pass.
+//
+// The budget is the real constraint, enforced by scripts/ci/always-on-budget.js
+// (per-file, against a recorded baseline) and scripts/doctor.js (8,000-token
+// ceiling). Growth must be recorded deliberately, which is what review reads.
+// Count is no longer asserted — only that the directory is not empty.
 
 function validateDir(dir, label) {
   if (!fs.existsSync(dir)) {
@@ -48,8 +56,8 @@ function main() {
     process.exit(1);
   }
 
-  if (base.count === 0 || base.count > MAX_AGENTS) {
-    console.error(`FAIL: expected 1-${MAX_AGENTS} agents, found ${base.count}`);
+  if (base.count === 0) {
+    console.error("FAIL: agents/ is empty");
     process.exit(1);
   }
 

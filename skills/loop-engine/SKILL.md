@@ -23,7 +23,7 @@ Use when you want Claude to keep iterating until a goal is met, with a separate 
 evaluating completion (not self-report, which is too weak).
 
 ```
-/goal "All pytest tests in saa/engine/areas/fixed_assets pass with ≥80% coverage"
+/goal "All pytest tests in src/billing/invoices pass with ≥80% coverage"
 ```
 
 A separate Haiku instance evaluates each iteration's output against the goal string.

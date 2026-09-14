@@ -1,0 +1,55 @@
+MIT License
+
+Copyright (c) 2026 Affaan Mustafa
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------
+Agents in this directory vendored from affaan-m/ecc (MIT), 2026-09-14.
+
+Chosen to match the stack this harness is used on — FastAPI, PostgreSQL +
+pgvector, TypeScript/React — because a generic reviewer catches generic bugs:
+
+  fastapi-reviewer       async correctness, DI, Pydantic schemas, OpenAPI
+  database-reviewer      query plans, indexes, RLS, migration safety
+  typescript-reviewer    type soundness, strict-mode gaps
+  react-reviewer         render correctness, effect misuse
+  rag-pipeline-reviewer  retrieval + embedding pipeline review
+  tdd-guide              red/green/refactor discipline
+
+Already present before this date, byte-identical to their ECC originals and
+previously uncredited — this file corrects that attribution:
+
+  code-reviewer          silent-failure-hunter  opensource-sanitizer
+
+python-reviewer shares a name with ECC's but has diverged. Compared 2026-09-14:
+the reviewer content is identical. The only differences are a `tools:` frontmatter
+format nit and ECC's 9-line "Prompt Defense Baseline" — prose asking the agent to
+treat fetched and third-party content as untrusted.
+
+Deliberately NOT resynced. That concern is now enforced mechanically by
+hooks/scripts/read-injection-scanner.js, which scans what Read, WebFetch and
+WebSearch actually return and labels it as data. Per this repo's governing rule a
+script that enforces beats prose that advises, and the prose costs ~1,100
+characters on every invocation of every agent carrying it.
+
+Note the resulting inconsistency, left visible on purpose: the six agents above
+still carry the Baseline as vendored. Stripping it would mean editing six
+upstream files and inviting merge pain on the next re-pin, for prose that is
+harmless where it already sits. Do not ADD it to any new agent.

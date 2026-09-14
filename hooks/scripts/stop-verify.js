@@ -90,6 +90,57 @@ function pytestTargets(modifiedFiles, root) {
   return targets;
 }
 
+const EDIT_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
+
+function editedPathsInLine(line) {
+  if (!line.trim()) return [];
+  let row;
+  try {
+    row = JSON.parse(line);
+  } catch {
+    return [];
+  }
+  const content = row.message && row.message.content;
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter(block => block.type === 'tool_use' && EDIT_TOOLS.has(block.name))
+    .map(block => (block.input || {}).file_path || (block.input || {}).notebook_path)
+    .filter(Boolean);
+}
+
+// Which files this session itself edited, repo-relative, or null when the
+// transcript cannot be read. Several Claude sessions can share one working
+// tree and `git status` cannot tell them apart: without this the hook reports
+// another session's half-finished work as this one's failure and never clears.
+// Edits made through Bash are invisible here, so an unreadable transcript
+// falls back to verifying everything git reports rather than nothing.
+function sessionEditedFiles(transcriptPath, root) {
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
+  let lines;
+  try {
+    lines = fs.readFileSync(transcriptPath, 'utf8').split('\n');
+  } catch {
+    return null;
+  }
+  const edited = new Set();
+  for (const line of lines) {
+    for (const file of editedPathsInLine(line)) {
+      edited.add(path.relative(root, path.resolve(root, file)));
+    }
+  }
+  return edited;
+}
+
+// Scope mypy to the changed files. `mypy .` is wrong in a repo whose sources
+// live under several roots: A3-core has three roots that each hold a package
+// named `tests`, so one run from the top sees a file under two module names and
+// dies before checking anything. That repo's own pyproject says so, and its CI
+// runs mypy per root rather than once from above. Deleted files are dropped —
+// git reports them as modified and mypy cannot open them.
+function mypyTargets(modifiedFiles, root) {
+  return modifiedFiles.filter(file => fs.existsSync(path.join(root, file)));
+}
+
 function runVerifier(cmd, cwd) {
   try {
     execSync(cmd, { cwd, stdio: 'pipe', encoding: 'utf8' });
@@ -140,7 +191,16 @@ async function main() {
     process.exit(0);
   }
 
-  const scopedPytest = pytestTargets(modifiedPy, cwd);
+  const ourEdits = sessionEditedFiles(payload.transcript_path, cwd);
+  const changedPy =
+    ourEdits === null ? modifiedPy : modifiedPy.filter(file => ourEdits.has(file));
+  if (changedPy.length === 0) {
+    log('[stop-verify] No .py file changed by this session — skipping');
+    process.exit(0);
+  }
+
+  const scopedPytest = pytestTargets(changedPy, cwd);
+  const scopedMypy = mypyTargets(changedPy, cwd);
 
   for (const { tool, args, label } of VERIFIERS) {
     const bin = resolveTool(cwd, tool);
@@ -148,11 +208,18 @@ async function main() {
       log(`[stop-verify] ${label} not found — skipping`);
       continue;
     }
-    // Scope pytest to the changed workspace packages when resolvable.
+    if (tool === 'mypy' && scopedMypy.length === 0) {
+      log('[stop-verify] mypy — every changed .py file is deleted, skipping');
+      continue;
+    }
+    // Scope pytest to the changed workspace packages when resolvable, and mypy
+    // to the changed files themselves.
     const effectiveArgs =
       tool === 'pytest' && scopedPytest.length > 0
         ? `${args} ${scopedPytest.join(' ')}`
-        : args;
+        : tool === 'mypy'
+          ? scopedMypy.map(file => JSON.stringify(file)).join(' ')
+          : args;
     const cmd = bin.startsWith('uv ')
       ? `${bin} ${effectiveArgs}`
       : `${JSON.stringify(bin)} ${effectiveArgs}`;
@@ -165,7 +232,14 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => {
-  log(`[stop-verify] Unexpected error: ${err.message}`);
-  process.exit(0);
-});
+// Run as a hook; require as a module. Without the guard, `require()`ing this
+// file to unit-test the pure helpers would execute main() and try to verify the
+// test runner's own working tree.
+if (require.main === module) {
+  main().catch(err => {
+    log(`[stop-verify] Unexpected error: ${err.message}`);
+    process.exit(0);
+  });
+}
+
+module.exports = { editedPathsInLine, sessionEditedFiles, mypyTargets, pytestTargets };

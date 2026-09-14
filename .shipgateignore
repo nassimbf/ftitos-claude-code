@@ -1,0 +1,21 @@
+# Paths ship-gate.js checks for SECRETS but not for style.
+#
+# Vendored third-party code. You cannot fix upstream's console.log in your own
+# push, so flagging it is noise — and noise is what gets a gate switched off.
+# Secrets are still checked here: publishing someone else's leaked key is still
+# publishing a leaked key.
+#
+# One path prefix per line. `#` comments and blank lines ignored.
+
+# gstack, MIT, pinned at 71f6048 — see skills/GSTACK-LICENSE
+skills/browse/
+skills/cso/
+skills/qa/
+
+# Agent prompts vendored from affaan-m/ecc — see agents/ECC-LICENSE
+agents/fastapi-reviewer.md
+agents/database-reviewer.md
+agents/typescript-reviewer.md
+agents/react-reviewer.md
+agents/rag-pipeline-reviewer.md
+agents/tdd-guide.md

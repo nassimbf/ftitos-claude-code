@@ -113,6 +113,22 @@ const cases = [
   ['but a heredoc fed to a shell is still executable', () => {
     assert(bash("bash <<'EOF'\ncat .env\nEOF"), 'heredoc into a shell runs');
   }],
+
+  // Crash policy. This hook had no outer catch, so an exception exited 1 —
+  // neither allow nor deny, an unhandled rejection with undefined blocking
+  // behaviour. A non-string file_path reaches it (found 2026-09-14). For a hook
+  // whose whole job is keeping a secret out of the conversation, its own bug
+  // must not wave the read through: silence is indistinguishable from approval,
+  // and a secret that lands in context stays in every later request.
+  ['a crash fails CLOSED with a named cause', () => {
+    const hostile = JSON.stringify({
+      tool_name: 'Read',
+      tool_input: { file_path: { nested: true } },
+    });
+    const r = spawnSync('node', [HOOK], { input: hostile, encoding: 'utf8' });
+    assert.strictEqual(r.status, 2, 'a crash must deny, not exit 0 or 1');
+    assert.match(r.stderr, /failing closed/, 'the crash must say what it did');
+  }],
 ];
 
 let passed = 0;

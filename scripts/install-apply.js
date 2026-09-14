@@ -88,6 +88,24 @@ function backupFile(filePath) {
   return backupPath;
 }
 
+// "Already present" and "present but out of date" are different facts, and
+// conflating them is how a hook fixed HERE never reaches ~/.claude. On
+// 2026-09-14 the live cc-safety-net.js was several fixes behind this repo and
+// twice blocked legitimate work while the repo copy had been correct all along.
+// --force overwrites everything including a user's own edits, which is too blunt
+// to reach for routinely, so nobody did.
+//
+// Comparing content splits the cases: identical is genuinely nothing to do,
+// different means the repo has something the install does not. Stale files are
+// updated and backed up first, so a local edit is recoverable.
+function sameContent(a, b) {
+  try {
+    return fs.readFileSync(a).equals(fs.readFileSync(b));
+  } catch {
+    return false; // unreadable — treat as different and let the copy decide
+  }
+}
+
 function copyDirectory(srcDir, destDir, opts, exclude) {
   const files = getAllFiles(srcDir, "", exclude);
   const installed = [];
@@ -95,34 +113,54 @@ function copyDirectory(srcDir, destDir, opts, exclude) {
   for (const relFile of files) {
     const srcFile = path.join(srcDir, relFile);
     const destFile = path.join(destDir, relFile);
+    const exists = fs.existsSync(destFile);
+    const stale = exists && !sameContent(srcFile, destFile);
 
-    if (fs.existsSync(destFile) && !opts.force) {
-      console.log(`  SKIP (exists): ${destFile}`);
+    if (exists && !stale) {
+      console.log(`  SKIP (identical): ${destFile}`);
       continue;
     }
 
     if (opts.dryRun) {
-      console.log(`  WOULD COPY: ${relFile} -> ${destFile}`);
+      console.log(`  ${stale ? "WOULD UPDATE (stale)" : "WOULD COPY"}: ${relFile} -> ${destFile}`);
       installed.push(destFile);
       continue;
     }
 
-    if (fs.existsSync(destFile) && opts.force) {
+    if (exists) {
       const backup = backupFile(destFile);
       console.log(`  BACKUP: ${destFile} -> ${backup}`);
     }
 
     ensureDir(path.dirname(destFile));
     fs.copyFileSync(srcFile, destFile);
-    console.log(`  INSTALLED: ${destFile}`);
+    console.log(`  ${stale ? "UPDATED (was stale)" : "INSTALLED"}: ${destFile}`);
     installed.push(destFile);
   }
 
   return installed;
 }
 
+// `node "$HOME/.claude/scripts/hooks/x.js"` and
+// `node "/Users/me/.claude/scripts/hooks/x.js"` are the same registration, but
+// as raw strings they are not equal, so dedup missed and every install added a
+// second copy of a hook already present. That is the v4 duplicate-hooks bug
+// (1f4fafc: "8 hooks registered twice, so every edit ran GateGuard and wrote a
+// backup twice") returning by a different route — observed again 2026-09-14
+// when an install produced 9 duplicates.
+//
+// Comparing the resolved path makes the two forms one key. Quotes are dropped
+// too, since quoting is a shell detail and not part of the identity.
+function normalizeHookCommand(command) {
+  return String(command || "")
+    .replace(/\$\{HOME\}|\$HOME\b/g, os.homedir())
+    .replace(/(^|\s)~(?=\/)/g, `$1${os.homedir()}`)
+    .replace(/["']/g, "")
+    .trim();
+}
+
 function hookKey(eventType, matcher, command) {
-  return `${eventType}::${matcher}::${command}`;
+  return `${eventType}::${matcher}::${normalizeHookCommand(command)}`;
 }
 
 function mergeHooks(srcPath, destPath, opts) {

@@ -26,12 +26,12 @@ the Provenance table rather than committing them.
 | Repo | Verdict | The reason in one line |
 |---|---|---|
 | `open-gsd/gsd-core` | **INSTALL PARTS** | Zero-dep Node hook libs fill two named gaps |
-| `Graphify-Labs/graphify` | **INSTALL PARTS** (A3 only) | Deterministic AST + real staleness handling; A3 install is orphaned |
+| `Graphify-Labs/graphify` | **INSTALL PARTS** (per-project) | Deterministic AST + real staleness handling; the one install we had was orphaned |
 | `garrytan/gstack` | PATTERN-ONLY | 3 skills already vendored; 3 shell guards worth porting as code |
 | `affaan-m/ecc` | PATTERN-ONLY | Real engineering, but ~30,200 always-on tokens to install |
 | `shareAI-lab/learn-claude-code` | PATTERN-ONLY | Python teaching repo; value is its tests |
 | `rtk-ai/rtk` | PATTERN-ONLY | Rust + `jq` breaks zero-dep; binary sits in the request path |
-| `JuliusBrussee/caveman` | SKIP (A3) / PATTERN-ONLY | BSL commercial-licence clause vs A3 being a hosted service |
+| `JuliusBrussee/caveman` | SKIP (hosted use) / PATTERN-ONLY | BSL commercial-licence clause bars hosted or embedded use |
 | `garrytan/gbrain` | PATTERN-ONLY | 29 npm deps; MCP surface alone exceeds our headroom |
 | `DietrichGebert/ponytail` | PATTERN-ONLY | ~1,540 always-on tokens; 0 of 6 hooks block anything |
 | `Egonex-AI/Understand-Anything` | PATTERN-ONLY | 58,868-byte SKILL.md ≈ 15–16k tokens on invoke |
@@ -70,13 +70,13 @@ worth copying — it drives every hook with allow input, deny input, malformed J
 unclosed stdin, asserting the declared crash policy holds. Write ours first, per the
 repo rule.
 
-### graphify → A3 only, not this repo
+### graphify → per-project, not this repo
 
 Deterministic tree-sitter extraction, zero LLM in the build path
 (`graphify/extract.py:1`; "Graph construction costs zero LLM credits", `BENCHMARKS.md:168`).
 Python and TypeScript are first-class core deps.
 
-A3 currently has the pointer without the thing: a 56,950-byte `SKILL.md` and **no graph,
+The one project that had it installed had the pointer without the thing: a 56,950-byte `SKILL.md` and **no graph,
 no git hooks, no PreToolUse wiring, no CLAUDE.md rules**. The standing open item said the
 graph was never built; none of the maintenance machinery was installed either.
 
@@ -86,8 +86,19 @@ stale softens and never blocks (`cli.py:915`), and strict deny fires at most onc
 session via an O_EXCL claim (`cli.py:710`) so an agent cannot be stranded. **All of that
 is inert unless the PreToolUse hook is installed.**
 
-Decision: complete the install or delete `~/projects/A3/.claude/skills/graphify/`. A skill
+Decision: complete the install or delete the skill directory. A skill
 documenting `/graphify` against a nonexistent graph is a trap.
+
+**Resolved 2026-09-14 — archived, not completed.** The directory was untracked and is now
+under that project's `.claude/skills-archive/` with a
+`WHY-ARCHIVED.md` recording what a real install needs. Archived rather than deleted, per
+this repo's own convention.
+
+Archiving is the right half of "complete or delete" because completing it is not a small
+step: ~30 Python wheels per machine, four separate pieces of wiring, and a full rebuild
+whose wall-clock nobody has measured on a repo this size. That is a decision to make
+deliberately, not a side effect of a cleanup pass. What could not stay was the pointer
+without the thing.
 
 **Cost of completing it.** The ~39-token frontmatter claim is confirmed (140 bytes), but a
 *working* install also wants `always_on/claude-md.md` (772 B) in CLAUDE.md, so true always-on
@@ -98,7 +109,7 @@ networkx/numpy/rapidfuzz, a per-machine Python install rather than a file copy.
 **Measure the rebuild before wiring it to a commit hook.** Updates are incremental off an AST
 cache (`cli.py:409-506`), but `post-checkout` forces a **full** rebuild (`hooks.py:257`), and
 `BENCHMARKS.md` reports cost only in dollars and tokens — **wall-clock rebuild time is
-unmeasured.** A3 is ~7,100 source files across 33 worktrees. Time it first.
+unmeasured.** Time it on your own tree before wiring it to a commit hook.
 
 **Its evidence is thinner than it looks.** The headline benchmarks (LOCOMO n=300,
 LongMemEval-S n=50) measure *memory*, not code. The code result is ERPNext at **n=6**:
@@ -122,7 +133,7 @@ our `codebase-onboarding` skill.
 | rtk | 4-state decision contract | Ours are 2-state |
 | learn-cc | `tests/test_compaction_tool_pairs.py:203-231` | Never trust a filesystem path found *inside tool output*; re-resolve and prefix-check |
 | caveman | `engine/safety/safety.go:43-49` + `engine/evals/probes.go:11-39` | A lossy operation refuses to run unless the original is recoverable |
-| gbrain | `src/core/context/sensitivity-scan.ts:1-18` | Detector, not redactor: findings carry family + fingerprint, never the matched text. → A3 anonymizer |
+| gbrain | `src/core/context/sensitivity-scan.ts:1-18` | Detector, not redactor: findings carry family + fingerprint, never the matched text. → any redaction tool |
 | Understand-Anything | `validate-incremental-symbols.mjs:244,486` | Symbol present in source but absent from rebuilt graph blocks publication, exit 1 |
 | cc-switch | `failover_switch.rs:41`, `circuit_breaker.rs:66` | Promote-on-success + half-open probe, as a shell wrapper |
 
@@ -186,7 +197,7 @@ But catching exactly this is what the hook exists for.
 
 | Claim | Source says |
 |---|---|
-| caveman ships a closed-source BSL binary in the request path | 143 `.go` files ship and compile, no committed binaries. `proxy/` runs locally, upstream is config-driven (`proxy/cmd/caveman-proxy/main.go:320-327`); prompt content stays on-host. Real blocker is `LICENSING.md:55-57` — hosted/managed/embedded use needs a commercial licence, and A3 is hosted |
+| caveman ships a closed-source BSL binary in the request path | 143 `.go` files ship and compile, no committed binaries. `proxy/` runs locally, upstream is config-driven (`proxy/cmd/caveman-proxy/main.go:320-327`); prompt content stays on-host. Real blocker is `LICENSING.md:55-57` — hosted/managed/embedded use needs a commercial licence |
 | caveman never measured anything | `docs/HONEST-NUMBERS.md:16` says "Not published" and `benchmarks/results/` holds only `.gitkeep` — but `evals/snapshots/results.json` is real, committed and offline-reproducible: **−48.5% vs baseline, −52.6% vs a terse control.** The README's 65% is unsupported; ~50% is real |
 | rtk is BSL-licensed | **Apache-2.0** (`Cargo.toml:10`, `LICENSE:1`). The disqualifier is the binary wrapping every Bash command, not the licence |
 | rtk ships 155 golden fixtures | **79** files in `tests/fixtures/`, and they pin CLI parser output, not hook behaviour |
@@ -231,7 +242,7 @@ carrying affiliate codes per README, and **28 affiliate URLs compiled into the s
 from a maintainer endpoint (`tauri.conf.json:63-64`), which proves provenance but not intent:
 each update reships a revised reseller list. A `ccswitch://` deeplink (`:59`) accepts provider
 configs from a clicked link. Failover re-sends **the same request body** to the next vendor
-(`forwarder.rs:464`) — under §203 StGB that is an uncontrolled disclosure path, not resilience.
+(`forwarder.rs:464`) — for confidential work that is an uncontrolled disclosure path, not resilience.
 
 **`gbrain` — PATTERN-ONLY; Engram keeps the slot.** Postgres+pgvector or embedded PGLite, but
 still requires Bun, 29 npm deps, an MCP server process and `OPENAI_API_KEY` by default. Its

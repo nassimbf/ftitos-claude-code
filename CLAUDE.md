@@ -10,20 +10,22 @@ markdown the model may or may not read.
 
 ```
 ftitos-claude-code/
-├── agents/          # 6 specialist agents
+├── agents/          # 14 agents — no count cap; the budget decides
+│   └── ECC-LICENSE  # 9 of them vendored from affaan-m/ecc (MIT)
 ├── skills/          # 9 skills — no count cap; the budget decides (skills/TIER.md)
 ├── rules/           # 3 always-on files: code, workflow, security
 │   ├── python/      # language-specific, loaded on demand
 │   └── typescript/
 ├── hooks/
-│   ├── hooks.json   # 17 registrations, merged into settings.json at install
-│   └── scripts/     # 18 scripts — the enforcement layer
+│   ├── hooks.json   # 18 registrations, merged into settings.json at install
+│   └── scripts/     # 19 scripts — the enforcement layer
 ├── scripts/
 │   ├── ci/          # 6 validators, run by doctor and the git hooks
 │   └── ...          # install-apply, uninstall, doctor, devendor-gstack
-├── tests/           # 14 files, run by the pre-commit gate
+├── tests/           # 17 files, run by the pre-commit gate
 ├── templates/
 │   └── git-hooks/   # pre-commit + commit-msg, installed into a clone
+├── .vendor/         # gitignored clones of 13 evaluated repos — VENDOR-MINING.md
 ├── .archive/        # every removal, kept reversible
 └── install.sh
 ```
@@ -53,15 +55,24 @@ fixed in the field and never committed back:
 If you fix something in `~/.claude`, commit it here the same day. v3 lost both of these for
 two months because nobody did.
 
-The reverse direction leaks too, and it is the one nobody notices: `install-apply.js`
-skips any file that already exists, so a hook fixed *here* never reaches `~/.claude`
-unless you pass `--force` or copy it yourself. On 2026-09-14 the live `cc-safety-net.js`
-was two fixes behind this repo and blocked a legitimate commit; the repo copy had been
-correct the whole time. Until the installer distinguishes "already present" from
-"present and stale", verify the live copy after changing a hook:
+The reverse direction leaked too, and it was the one nobody noticed: `install-apply.js`
+skipped any file that already existed, so a hook fixed *here* never reached `~/.claude`.
+On 2026-09-14 the live `cc-safety-net.js` ran several fixes behind this repo and twice
+refused legitimate work while the repo copy had been correct all along.
+
+**Fixed** (`e42eebc`, `20644e8`). The installer now compares content and reports three
+distinct outcomes — `SKIP (identical)`, `WOULD COPY`, `WOULD UPDATE (stale)` — backing up
+before it overwrites. It also matches hook registrations by *resolved path*, because
+`$HOME/...` and `/Users/you/...` are the same registration and comparing raw strings
+re-created the v4 duplicate-hooks bug: one install produced 9 duplicates, and a duplicated
+PreToolUse entry runs every guard twice on every call.
+
+So `./install.sh` is now the way to sync, and running it twice is a no-op:
 
 ```bash
-diff hooks/scripts/<name>.js ~/.claude/scripts/hooks/<name>.js
+./install.sh --dry-run   # what would change, and why
+./install.sh             # apply; backs up anything it overwrites
+node scripts/doctor.js   # asserts no duplicate registrations
 ```
 
 ## Conventions
@@ -96,16 +107,30 @@ The skills are the cheap part.
 
 ## What the gates actually are
 
-Three of them, and each exists because the previous one could be walked around.
+Four of them, and each of the first three exists because the previous one could
+be walked around.
 
 | Gate | Enforces |
 |---|---|
-| `.git/hooks/pre-commit` | 14 test files + doctor |
+| `.git/hooks/pre-commit` | 17 test files + doctor |
 | `.git/hooks/commit-msg` | a `fix:`/`feat:` commit carries a regression test |
 | `block-no-verify.js` | that the two above cannot be skipped |
+| `ship-gate.js` | what leaves: secrets, debug artifacts, untracked TODOs |
 
 The third is the load-bearing one. Before it, every gate here was optional —
 `--no-verify`, or `-c core.hooksPath=`, and none of it ran.
+
+The fourth closes a different gap. The first three protect *this* repo; nothing
+checked what got pushed out of the repos this harness is used on.
+`rules/security.md` already required a dependency audit before ship and
+`rules/code.md` already banned debug artifacts and TODO-without-issue-reference —
+as prose, which the model may skip. `ship-gate.js` fires on `git push` and
+`gh pr create` and makes those an exit code.
+
+It deliberately does **not** run the test suite or measure coverage. Those take
+minutes, and a gate that takes minutes is a gate people route around — which is
+precisely why the third gate had to exist. Fast, certain, and embarrassing in
+front of a client is the whole bar.
 
 ## Development
 
