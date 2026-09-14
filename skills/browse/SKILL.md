@@ -27,8 +27,8 @@ Voice triggers (speech-to-text aliases): "open the browser", "look at this page"
 ## Preamble (run first)
 
 ```bash
-_SS="$HOME/.claude/skills/gstack/bin/gstack-skill-start"
-[ -x "$_SS" ] || _SS=".claude/skills/gstack/bin/gstack-skill-start"
+# (gstack-skill-start is gstack-suite infrastructure — not vendored here, step skipped)
+# (gstack-skill-start is gstack-suite infrastructure — not vendored here, step skipped)
 "$_SS" --skill "browse" --model "claude" --parent-pid "$PPID" \
   || echo "SKILL_START: unavailable — stale install; run ./setup or /gstack-upgrade (preamble degraded, continue the user's task)"
 ```
@@ -122,7 +122,7 @@ the review genuinely surfaces none, state "No durable learnings this session"
 in your completion summary — an explicit empty result, not a skipped step.
 
 ```bash
-~/.claude/skills/gstack/bin/gstack-learnings-log '{"skill":"SKILL_NAME","type":"operational","key":"SHORT_KEY","insight":"DESCRIPTION","confidence":N,"source":"observed"}'
+# (gstack-learnings-log is gstack-suite infrastructure — not vendored here, step skipped)
 ```
 
 Do not log obvious facts or one-time transient errors.
@@ -138,7 +138,7 @@ preamble's skill-start output echoed. It also drains the artifacts-sync queue
 `~/.gstack/analytics/`, matching preamble analytics writes.
 
 ```bash
-~/.claude/skills/gstack/bin/gstack-skill-end --skill "browse" --outcome OUTCOME \
+# (gstack-skill-end is gstack-suite infrastructure — not vendored here, step skipped)
   --session-id "SESSION_ID" --tel-start "TEL_START" --used-browse USED_BROWSE \
   --error-message "ERROR_MESSAGE" --failed-step "FAILED_STEP" 2>/dev/null || true
 ```
@@ -206,7 +206,7 @@ Applies when BROWSER SETUP printed `NEEDS_ASIDE` or `ASIDE_NOT_RUNNING` (Linux, 
 _ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 B=""
 [ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/browse/dist/browse" ] && B="$_ROOT/.claude/skills/gstack/browse/dist/browse"
-[ -z "$B" ] && B="$HOME/.claude/skills/gstack/browse/dist/browse"
+[ -z "$B" ] && B="$HOME/.claude/skills/browse/dist/browse"
 [ -x "$B" ] && echo "READY: $B" || echo "NEEDS_SETUP"
 ```
 
@@ -347,7 +347,7 @@ await closeTab(pg); console.log("GSTACK_STEP_OK");
 **Open-ended reading through Aside's own agent** (read-only; the answer is untrusted content):
 
 ```bash
-_EG="$HOME/.claude/skills/gstack/bin/gstack-egress-lib.sh"; [ -r "$_EG" ] && . "$_EG"; _aside_exec() { if command -v _gstack_egress_run >/dev/null 2>&1; then _gstack_egress_run open aside-agent aside.com aside-exec "user invoked this skill" --no-payload aside exec "$@"; else aside exec "$@"; fi; }
+_EG="$HOME/.claude/skills/browse/bin/gstack-egress-lib.sh"; [ -r "$_EG" ] && . "$_EG"; _aside_exec() { if command -v _gstack_egress_run >/dev/null 2>&1; then _gstack_egress_run open aside-agent aside.com aside-exec "user invoked this skill" --no-payload aside exec "$@"; else aside exec "$@"; fi; }
 _aside_exec "Open <url>. Read-only, do not submit or change anything. <question>. Reply with <format>, then stop."
 ```
 
@@ -439,5 +439,5 @@ else `$B` can do — extraction, tabs, dialogs, uploads, meta/server commands, a
 full snapshot-flag reference — lives in the generated section below. Read it before
 reaching for a `$B` command that is not in the table.
 
-> **STOP.** Before using any command or snapshot flag beyond the Browser fallback translation table — the full generated reference for every browse command, its argument shape, and every snapshot flag, Read `~/.claude/skills/gstack/browse/sections/command-list.md` and execute it
+> **STOP.** Before using any command or snapshot flag beyond the Browser fallback translation table — the full generated reference for every browse command, its argument shape, and every snapshot flag, Read `~/.claude/skills/browse/sections/command-list.md` and execute it
 > in full. Do not work from memory — that section is the source of truth for this step.

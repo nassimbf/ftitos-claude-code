@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { safeUnlink, safeKill, isProcessAlive } from './error-handling';
 import { restrictFilePermissions, mkdirSecure } from './file-permissions';
-import { atomicWriteSync } from '../../lib/fs-atomic';
+import { atomicWriteSync } from '../lib/fs-atomic';
 
 /**
  * Locate the terminal-agent script on disk. In dev (cli.ts running via

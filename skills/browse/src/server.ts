@@ -56,7 +56,7 @@ import { isProcessAlive } from './error-handling';
 import { sanitizeBody, stripLoneSurrogateEscapes, stripLoneSurrogates, sanitizeReplacer } from './sanitize';
 import { startSocksBridge, testUpstream, type BridgeHandle } from './socks-bridge';
 import { parseProxyConfig, toUpstreamConfig, ProxyConfigError } from './proxy-config';
-import { writeReceipt } from '../../lib/egress-receipt';
+import { writeReceipt } from '../lib/egress-receipt';
 import { redactProxyUrl } from './proxy-redact';
 import { shouldSpawnXvfb, pickFreeDisplay, spawnXvfb, xvfbInstallHint, type XvfbHandle } from './xvfb';
 import { logTunnelDenial } from './tunnel-denial-log';

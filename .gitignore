@@ -5,3 +5,6 @@ node_modules/
 
 # v4 removals — git history is the archive
 .archive/
+
+# built artifacts (58MB compiled driver — built on install, not committed)
+skills/browse/dist/

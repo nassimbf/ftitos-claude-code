@@ -13,7 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 
 const STATUS = { GREEN: 'GREEN', YELLOW: 'YELLOW', RED: 'RED' };
 const LABELS = { GREEN: '[OK]  ', YELLOW: '[WARN]', RED: '[FAIL]' };
@@ -135,6 +135,18 @@ const CHECKS = [
     if (tokens <= CONTEXT_BUDGET_TOKENS) return { status: STATUS.GREEN, message: msg };
     if (tokens <= CONTEXT_BUDGET_TOKENS * 2) return { status: STATUS.YELLOW, message: msg };
     return { status: STATUS.RED, message: msg };
+  }],
+
+  ['Skill references resolve', () => {
+    // A skill telling the model to run a path that does not exist fails silently:
+    // the model runs it, gets "no such file", and improvises. /go did this for
+    // months; the vendored gstack skills did it on day one.
+    const validator = path.join(__dirname, 'ci', 'validate-skill-refs.js');
+    if (!exists(validator)) return { status: STATUS.YELLOW, message: 'validator missing' };
+    const res = spawnSync(process.execPath, [validator, path.join(__dirname, '..')], { encoding: 'utf8' });
+    if (res.status === 0) return { status: STATUS.GREEN, message: 'all fenced skill references resolve' };
+    const count = (res.stderr.match(/(\d+) dangling/) || [, '?'])[1];
+    return { status: STATUS.RED, message: `${count} dangling reference(s) — run scripts/ci/validate-skill-refs.js` };
   }],
 
   ['Backup cruft', () => {

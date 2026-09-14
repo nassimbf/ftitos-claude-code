@@ -3,7 +3,7 @@
 ## Snapshot Flags
 
 The snapshot is your primary tool for understanding and interacting with pages.
-`$B` is the browse binary (resolved from `$_ROOT/.claude/skills/gstack/browse/dist/browse` or `~/.claude/skills/gstack/browse/dist/browse`).
+`$B` is the browse binary (resolved from `$_ROOT/.claude/skills/gstack/browse/dist/browse` or `~/.claude/skills/browse/dist/browse`).
 
 **Syntax:** `$B snapshot [flags]`
 

@@ -24,7 +24,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { writeSecureFile, restrictFilePermissions, mkdirSecure } from './file-permissions';
-import { atomicWriteSync, atomicWriteQuiet } from '../../lib/fs-atomic';
+import { atomicWriteSync, atomicWriteQuiet } from '../lib/fs-atomic';
 import { safeUnlink } from './error-handling';
 import { writeAgentRecord, clearAgentRecord } from './terminal-agent-control';
 import { findAvailablePort } from './port-allocator';

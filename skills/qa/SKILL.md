@@ -37,8 +37,8 @@ Voice triggers (speech-to-text aliases): "quality check", "test the app", "run Q
 ## Preamble (run first)
 
 ```bash
-_SS="$HOME/.claude/skills/gstack/bin/gstack-skill-start"
-[ -x "$_SS" ] || _SS=".claude/skills/gstack/bin/gstack-skill-start"
+# (gstack-skill-start is gstack-suite infrastructure — not vendored here, step skipped)
+# (gstack-skill-start is gstack-suite infrastructure — not vendored here, step skipped)
 "$_SS" --skill "qa" --model "claude" --parent-pid "$PPID" \
   || echo "SKILL_START: unavailable — stale install; run ./setup or /gstack-upgrade (preamble degraded, continue the user's task)"
 ```
@@ -242,7 +242,7 @@ Bad closer: a tour of every edit, a restatement of the plan, and three paragraph
 At session start or after compaction, recover recent project context.
 
 ```bash
-eval "$(~/.claude/skills/gstack/bin/gstack-slug 2>/dev/null)"
+# (gstack-slug is gstack-suite infrastructure — not vendored here, step skipped)
 _PROJ="${GSTACK_HOME:-$HOME/.gstack}/projects/${SLUG:-unknown}"
 if [ -d "$_PROJ" ]; then
   echo "--- RECENT ARTIFACTS ---"
@@ -259,7 +259,7 @@ if [ -d "$_PROJ" ]; then
   [ -n "$_LATEST_CP" ] && echo "LATEST_CHECKPOINT: $_LATEST_CP"
   if [ -f "$_PROJ/decisions.active.json" ]; then
     echo "--- ACTIVE DECISIONS (recent, scope-relevant) ---"
-    ~/.claude/skills/gstack/bin/gstack-decision-search --recent 5 2>/dev/null
+    # (gstack-decision-search is gstack-suite infrastructure — not vendored here, step skipped)
     echo "--- END DECISIONS ---"
   fi
   echo "--- END ARTIFACTS ---"
@@ -339,7 +339,7 @@ Before each AskUserQuestion, choose `question_id` from `~/.claude/skills/gstack/
 
 After answer, log best-effort (PostToolUse hook also captures deterministically when installed; dedup on (source, tool_use_id) handles double-writes). Substitute `SESSION_ID` with the value the preamble's skill-start output echoed — shell variables do not survive between Bash calls:
 ```bash
-~/.claude/skills/gstack/bin/gstack-question-log '{"skill":"qa","question_id":"<id>","question_summary":"<short>","category":"<approval|clarification|routing|cherry-pick|feedback-loop>","door_type":"<one-way|two-way>","options_count":N,"user_choice":"<key>","recommended":"<key>","session_id":"SESSION_ID"}' 2>/dev/null || true
+# (gstack-question-log is gstack-suite infrastructure — not vendored here, step skipped)
 ```
 
 For two-way questions, offer: "Tune this question? Reply `tune: never-ask`, `tune: always-ask`, or free-form."
@@ -348,7 +348,7 @@ User-origin gate (profile-poisoning defense): write tune events ONLY when `tune:
 
 Write (only after confirmation for free-form):
 ```bash
-~/.claude/skills/gstack/bin/gstack-question-preference --write '{"question_id":"<id>","preference":"<pref>","source":"inline-user","free_text":"<optional original words>"}'
+# (gstack-question-preference is gstack-suite infrastructure — not vendored here, step skipped)
 ```
 
 Exit code 2 = rejected as not user-originated; do not retry. On success: "Set `<id>` → `<preference>`. Active immediately."
@@ -402,7 +402,7 @@ the review genuinely surfaces none, state "No durable learnings this session"
 in your completion summary — an explicit empty result, not a skipped step.
 
 ```bash
-~/.claude/skills/gstack/bin/gstack-learnings-log '{"skill":"SKILL_NAME","type":"operational","key":"SHORT_KEY","insight":"DESCRIPTION","confidence":N,"source":"observed"}'
+# (gstack-learnings-log is gstack-suite infrastructure — not vendored here, step skipped)
 ```
 
 Do not log obvious facts or one-time transient errors.
@@ -418,7 +418,7 @@ preamble's skill-start output echoed. It also drains the artifacts-sync queue
 `~/.gstack/analytics/`, matching preamble analytics writes.
 
 ```bash
-~/.claude/skills/gstack/bin/gstack-skill-end --skill "qa" --outcome OUTCOME \
+# (gstack-skill-end is gstack-suite infrastructure — not vendored here, step skipped)
   --session-id "SESSION_ID" --tel-start "TEL_START" --used-browse USED_BROWSE \
   --error-message "ERROR_MESSAGE" --failed-step "FAILED_STEP" 2>/dev/null || true
 ```
@@ -576,7 +576,7 @@ Applies when BROWSER SETUP printed `NEEDS_ASIDE` or `ASIDE_NOT_RUNNING` (Linux, 
 _ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 B=""
 [ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/browse/dist/browse" ] && B="$_ROOT/.claude/skills/gstack/browse/dist/browse"
-[ -z "$B" ] && B="$HOME/.claude/skills/gstack/browse/dist/browse"
+[ -z "$B" ] && B="$HOME/.claude/skills/browse/dist/browse"
 [ -x "$B" ] && echo "READY: $B" || echo "NEEDS_SETUP"
 ```
 
@@ -614,7 +614,7 @@ Label `$B` output with the same evidence lines (`URL=`, `CONSOLE_ERRORS=`, `DIFF
 
 **Check test framework (bootstrap if needed):**
 
-> **STOP.** Before checking the project's test framework during Setup — ecosystem-marker detection, the bootstrap offer, framework install, CI pipeline generation, and first real tests (also needed at Phase 8e.5 if you skipped it and a regression test now requires a framework), Read `~/.claude/skills/gstack/qa/sections/test-bootstrap.md` and execute it
+> **STOP.** Before checking the project's test framework during Setup — ecosystem-marker detection, the bootstrap offer, framework install, CI pipeline generation, and first real tests (also needed at Phase 8e.5 if you skipped it and a regression test now requires a framework), Read `~/.claude/skills/qa/sections/test-bootstrap.md` and execute it
 > in full. Do not work from memory — that section is the source of truth for this step.
 
 **Create output directories:**
@@ -631,12 +631,12 @@ mkdir -p "$REPORT_DIR/screenshots"
 Search for relevant learnings from previous sessions:
 
 ```bash
-_CROSS_PROJ=$(~/.claude/skills/gstack/bin/gstack-config get cross_project_learnings 2>/dev/null || echo "unset")
+# (gstack-config is gstack-suite infrastructure — not vendored here, step skipped)
 echo "CROSS_PROJECT: $_CROSS_PROJ"
 if [ "$_CROSS_PROJ" = "true" ]; then
-  ~/.claude/skills/gstack/bin/gstack-learnings-search --limit 10 --query "qa testing bug regression flake fixture" --cross-project 2>/dev/null || true
+  # (gstack-learnings-search is gstack-suite infrastructure — not vendored here, step skipped)
 else
-  ~/.claude/skills/gstack/bin/gstack-learnings-search --limit 10 --query "qa testing bug regression flake fixture" 2>/dev/null || true
+  # (gstack-learnings-search is gstack-suite infrastructure — not vendored here, step skipped)
 fi
 ```
 
@@ -671,7 +671,7 @@ Before falling back to git diff heuristics, check for richer test plan sources:
 1. **Project-scoped test plans:** Check `~/.gstack/projects/` for recent `*-test-plan-*.md` files for this repo
    ```bash
    setopt +o nomatch 2>/dev/null || true  # zsh compat
-   eval "$(~/.claude/skills/gstack/bin/gstack-slug 2>/dev/null)"
+   # (gstack-slug is gstack-suite infrastructure — not vendored here, step skipped)
    ls -t ~/.gstack/projects/$SLUG/*-test-plan-*.md 2>/dev/null | head -1
    ```
 2. **Conversation context:** Check if a prior `/plan-eng-review` or `/plan-ceo-review` produced test plan output in this conversation
@@ -681,7 +681,7 @@ Before falling back to git diff heuristics, check for richer test plan sources:
 
 ## Phases 1-6: QA Baseline
 
-> **STOP.** Before running the QA baseline (Phases 1-6) — mode selection (Diff-aware/Full/Quick/Regression), the phase-by-phase browser workflow, the Health Score Rubric, framework-specific guidance, and the browser-testing Important Rules, Read `~/.claude/skills/gstack/qa/sections/qa-patterns.md` and execute it
+> **STOP.** Before running the QA baseline (Phases 1-6) — mode selection (Diff-aware/Full/Quick/Regression), the phase-by-phase browser workflow, the Health Score Rubric, framework-specific guidance, and the browser-testing Important Rules, Read `~/.claude/skills/qa/sections/qa-patterns.md` and execute it
 > in full. Do not work from memory — that section is the source of truth for this step.
 
 Record baseline health score at end of Phase 6 (per the Health Score Rubric in that section).
@@ -726,7 +726,7 @@ Pick ONE keyword that names the buggy component or page. The keyword should be a
 Worked examples (qa-specific): good keywords are `checkout-button`, `signup-form`, `payment`. Bad: `tests are failing`, `<failing-test>`, `app/views/_checkout.html.erb`.
 
 ```bash
-~/.claude/skills/gstack/bin/gstack-learnings-search --query "<your-keyword>" --limit 5 2>/dev/null || true
+# (gstack-learnings-search is gstack-suite infrastructure — not vendored here, step skipped)
 ```
 
 If any learnings come back, name which one applies to the fix you're about to make in one sentence. If none come back, continue without reference — the absence is itself useful information.
@@ -893,7 +893,7 @@ Write the report to both local and project-scoped locations:
 
 **Project-scoped:** Write test outcome artifact for cross-session context:
 ```bash
-eval "$(~/.claude/skills/gstack/bin/gstack-slug 2>/dev/null)" && mkdir -p ~/.gstack/projects/$SLUG
+# (gstack-slug is gstack-suite infrastructure — not vendored here, step skipped)
 ```
 Write to `~/.gstack/projects/{slug}/{user}-{branch}-test-outcome-{datetime}.md`
 
@@ -929,7 +929,7 @@ If you discovered a non-obvious pattern, pitfall, or architectural insight durin
 this session, log it for future sessions:
 
 ```bash
-~/.claude/skills/gstack/bin/gstack-learnings-log '{"skill":"qa","type":"TYPE","key":"SHORT_KEY","insight":"DESCRIPTION","confidence":N,"source":"SOURCE","files":["path/to/relevant/file"]}'
+# (gstack-learnings-log is gstack-suite infrastructure — not vendored here, step skipped)
 ```
 
 **Types:** `pattern` (reusable approach), `pitfall` (what NOT to do), `preference`
