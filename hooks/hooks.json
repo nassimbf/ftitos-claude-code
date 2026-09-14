@@ -80,6 +80,16 @@
             "description": "keep writes inside the worktree you are working in"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/block-no-verify.js\"",
+            "description": "refuse to let the pre-commit gate be skipped"
+          }
+        ]
       }
     ],
     "PostToolUse": [
