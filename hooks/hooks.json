@@ -131,6 +131,15 @@
             "description": "format and typecheck on edit"
           }
         ]
+      },
+      {
+        "matcher": "Read|WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/read-injection-scanner.js\""
+          }
+        ]
       }
     ],
     "Stop": [
