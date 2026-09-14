@@ -100,6 +100,38 @@ const cases = [
     const r = run('Write', { file_path: '.env', content: 'x' });
     assert.match(r.stdout, /SECRETS-BLOCK/);
   }],
+
+  // Crash policy. One catch used to cover two failures with opposite correct
+  // policies: a payload we cannot parse (fail OPEN — never block on input we
+  // could not read) and a crash inside the scan itself (must fail CLOSED — this
+  // hook's entire job is stopping a secret, so its own bug must not wave one
+  // through). Conflating them meant a throw anywhere in checkPath/checkBody
+  // shipped the secret silently. Both directions are pinned.
+  ['a crash inside the scan fails CLOSED', () => {
+    // A non-string file_path makes path.basename throw inside checkPath. It is a
+    // real reachable crash — the payload shape is whatever the tool sends us —
+    // and it stands in for any defect on the scan path.
+    const hostile = JSON.stringify({
+      tool_name: 'Write',
+      tool_input: { file_path: { nested: true }, content: 'x' },
+    });
+    const r = spawnSync('node', [HOOK], { input: hostile, encoding: 'utf8' });
+    assert.notStrictEqual(
+      r.status, EXIT_ALLOWED,
+      'a scan crash must not pass the write through'
+    );
+    assert.match(r.stderr, /failing closed/, 'the crash must say what it did');
+  }],
+
+  ['input we cannot parse still fails OPEN', () => {
+    for (const bad of ['not json', '', '{"tool_name":']) {
+      const r = spawnSync('node', [HOOK], { input: bad, encoding: 'utf8' });
+      assert.strictEqual(
+        r.status, EXIT_ALLOWED,
+        `unparseable input must not block: ${JSON.stringify(bad)}`
+      );
+    }
+  }],
 ];
 
 let passed = 0;
