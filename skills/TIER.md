@@ -5,16 +5,34 @@ only 9 of them were "core" — but Claude Code scans every installed skill's nam
 description on every session, so an unused skill costs context whether it is tier 1 or
 tier 3. The only honest lever is: fewer skills.
 
-## Shipped (6)
+## Shipped (8, cap 8)
 
-| Skill | Why it survived |
+| Skill | Why it ships |
 |---|---|
 | `spec-driven-development` | 132 invocations over 4.5 months — the most-used skill by a wide margin |
-| `loop-engine` | 30 invocations — unattended and in-session loops |
+| `loop-engine` | 30 invocations. The loop skill actually wired to `ralph-loop.js` in `hooks.json` |
 | `codebase-onboarding` | 21 invocations — first contact with an unfamiliar repo |
 | `code-review` | Backs the review pass in `/project:review` |
-| `product-lens` | Forcing questions before building the wrong thing |
-| `browser-qa` | The only verification layer that sees what the user sees |
+| `product-lens` | Drives the VALIDATE phase in `pipeline/phases/validate.md` |
+| `cso` | Security audit (OWASP + STRIDE). No prior equivalent at any tier |
+| `browse` | A CDP driver with an allowlist and proxy redaction — code, not advice |
+| `qa` | The QA workflow over `browse` |
+
+`cso`, `browse` and `qa` are vendored from garrytan/gstack at `71f6048`, MIT,
+retained in `skills/GSTACK-LICENSE`. Vendored rather than installed: the upstream
+`./setup` wires a self-updating hook, and an hourly mutation of the skill surface
+on a machine holding client audit data is not a thing to accept by default. Pinned
+means the surface changes when we change it.
+
+## Removed here
+
+`browser-qa` → `.archive/skills/`. Its `origin: ECC` frontmatter traces to a repo
+whose 24 hook commands are inline `node -e` one-liners; the skill itself was 87
+lines of prose instructing the model to *use* a browser MCP. `browse` ships the
+driver. Criterion 2 — if it can be code, it should not be advice.
+
+`codex` was vendored and then dropped before commit: `ccg:review` already performs
+dual-model cross-validated review. Criterion 3.
 
 ## Admission criteria
 
