@@ -35,6 +35,14 @@ const MUST_BLOCK = [
   'make build; rm -rf /',
   'sudo rm -rf /',
   'find . -type d | xargs rm -rf /',
+  // Shell forms that walked straight past the command-position match (probed
+  // 2026-09-14). A brace group is a command position the separator class did not
+  // know about, and empty quote pairs split a word without changing what the
+  // shell executes.
+  '{ rm -rf /; }',
+  'true\n{ rm -rf /; }',
+  "r''m -rf /",
+  'r""m -rf /',
 ];
 
 const MUST_ALLOW = [

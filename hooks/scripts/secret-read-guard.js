@@ -67,8 +67,12 @@ function stripCommitMessages(cmd) {
 // `echo $(cat .env)` and `bash -c "cat .env"` both surface `.env`.
 function bashOperands(command) {
   return stripCommitMessages(String(command))
+    // Empty quote pairs are invisible to the shell but split a word for anything
+    // matching on text: `.en''v` is `.env` when it runs (probed 2026-09-14).
+    // Drop the pairs before the remaining quotes become separators.
+    .replace(/''|""/g, '')
     .replace(/[$<]\(|\)|`|"|'/g, ' ')
-    .split(/[\s;|&]+/)
+    .split(/[\s;|&{}]+/)
     .filter(Boolean);
 }
 

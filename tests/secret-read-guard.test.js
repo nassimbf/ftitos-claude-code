@@ -82,6 +82,13 @@ const cases = [
     assert(bash('bash -c "cat .env"'));
   }],
 
+  ['empty quote pairs do not split the name (probed 2026-09-14)', () => {
+    // `.en''v` is `.env` to the shell but two tokens to a naive splitter.
+    assert(bash("cat .en''v"));
+    assert(bash('cat .en""v'));
+    assert(bash("cat '.env'"));
+  }],
+
   ['ordinary Bash still runs', () => {
     assert(!bash('cat README.md'));
     assert(!bash('cat .env.example'));

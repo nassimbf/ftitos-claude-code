@@ -83,7 +83,10 @@ function normalizeFlags(cmd) {
 // Matching command position instead of any position fixes the whole class: a word
 // is a command when it opens the string or follows a separator, optionally behind
 // a runner that execs its argument (`sudo rm`, `xargs rm`). Anything else is data.
-const CMD_POS = String.raw`(?:^|[;&|(\n])\s*(?:(?:sudo|doas|xargs|time|nohup|env|command)\s+(?:-\S+\s+)*)*`;
+// `{` opens a brace group, which is a command position exactly like `;` or `|`.
+// Omitting it meant `{ rm -rf /; }` ran a command the guard never inspected
+// (probed 2026-09-14, alongside the quote-splitting case handled in normalize()).
+const CMD_POS = String.raw`(?:^|[;&|(\n{])\s*(?:(?:sudo|doas|xargs|time|nohup|env|command)\s+(?:-\S+\s+)*)*`;
 
 // Flags and target must be read from the SAME command, so stop at a separator.
 // With `[\s\S]*` the lookaheads searched the whole string and borrowed evidence
@@ -92,7 +95,10 @@ const CMD_POS = String.raw`(?:^|[;&|(\n])\s*(?:(?:sudo|doas|xargs|time|nohup|env
 const SEG = String.raw`[^;&|\n]*`;
 
 const PATTERNS = [
-  { re: new RegExp(CMD_POS + String.raw`rm\b(?=${SEG}-[a-z]*f)(?=${SEG}-[a-z]*r)(?=${SEG}(?:\/(?:\s|$)|~|\$(?:HOME|\{HOME\})|\.\.\/.*\.\.\/))`), label: 'rm -rf targeting root, home, or .. chain' },
+  // A bare `/` target ends at whitespace, end-of-string, OR a shell separator.
+  // Accepting only the first two meant `{ rm -rf /; }` read as a path `/;` and
+  // fell through — the brace-group bypass was two bugs, not one.
+  { re: new RegExp(CMD_POS + String.raw`rm\b(?=${SEG}-[a-z]*f)(?=${SEG}-[a-z]*r)(?=${SEG}(?:\/(?:\s|$|[;&|)}])|~|\$(?:HOME|\{HOME\})|\.\.\/.*\.\.\/))`), label: 'rm -rf targeting root, home, or .. chain' },
   { re: /\bgit\s+push\b.*(?:--force|-f)\b/, label: 'git push --force' },
   { re: /\bgit\s+reset\s+--hard\b/, label: 'git reset --hard' },
   { re: /\bDROP\s+(?:DATABASE|TABLE)\b/i, label: 'DROP DATABASE or DROP TABLE' },
@@ -112,8 +118,16 @@ const PATTERNS = [
   { re: new RegExp(CMD_POS + String.raw`rm\s+${SEG}-[a-z]*r[a-z]*f[a-z]*\s+${SEG}(?:\$\(|` + '`)'), label: 'rm -rf with subshell expansion' },
 ];
 
+// An empty quote pair is invisible to the shell but splits a word for anything
+// matching on text: `r''m` executes `rm`. Dropping the pairs restores the word
+// the shell will actually run. Done after commit-message stripping, which needs
+// real quotes intact to find message bodies.
+function collapseEmptyQuotes(cmd) {
+  return cmd.replace(/''|""/g, '');
+}
+
 function check(cmd) {
-  const layers = allLayers(stripCommitMessages(cmd));
+  const layers = allLayers(collapseEmptyQuotes(stripCommitMessages(cmd)));
   for (const layer of layers) {
     const normalized = normalizeFlags(layer);
     for (const { re, label } of PATTERNS) {
