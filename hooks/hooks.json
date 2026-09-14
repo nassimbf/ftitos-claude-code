@@ -70,6 +70,16 @@
             "description": "block reads of .env / .secrets via Read, Grep or Bash"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/worktree-path-guard.js\"",
+            "description": "keep writes inside the worktree you are working in"
+          }
+        ]
       }
     ],
     "PostToolUse": [
