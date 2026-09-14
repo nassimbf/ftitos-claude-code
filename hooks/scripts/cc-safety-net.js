@@ -119,6 +119,10 @@ const CMD_POS = String.raw`(?:^|[;&|(\n{])\s*(?:(?:sudo|doas|xargs|time|nohup|en
 // in `skills/` and blocked. SEG is everything up to the next `;`, `&`, `|`, newline.
 const SEG = String.raw`[^;&|\n]*`;
 
+// The calls that make an interpreter one-liner dangerous: shelling out, or
+// deleting. `rm` is word-bounded so `readFileSync` and `form` do not match it.
+const DANGEROUS_CALL = String.raw`(?:os\.system|subprocess|\bexec\b|\beval\b|unlink|rmdir|\brm\b)`;
+
 const PATTERNS = [
   // A bare `/` target ends at whitespace, end-of-string, OR a shell separator.
   // Accepting only the first two meant `{ rm -rf /; }` read as a path `/;` and
@@ -154,7 +158,21 @@ const PATTERNS = [
   // Interpreter one-liners with dangerous content. Matches -c as well as -e:
   // python's flag is -c, so an -e-only pattern missed the most common form
   // (observed 2026-08-12 while testing the hook against `python3 -c`).
-  { re: /(?:python3?|node|perl|ruby)\s+-[a-z]*[ce]\s+.*(?:os\.system|subprocess|exec|eval|unlink|rmdir|rm)/i, label: 'dangerous interpreter one-liner' },
+  //
+  // `.*` used to run past separators, so the dangerous token could belong to a
+  // later, unrelated command: `node -e "console.log(1)"; rm -f /tmp/scratch` was
+  // judged against that trailing `rm` and blocked. Third instance of the
+  // borrowed-evidence class SEG exists to fix (found 2026-09-14).
+  //
+  // Plain SEG is wrong here though, and the fix for it is the interesting part:
+  // SEG stops at the first `;`, but a one-liner's `;` is usually INSIDE its
+  // quoted body — `python3 -c "import os; os.system('rm -rf /')"` is the exact
+  // payload this rule exists to catch, and SEG cut it in half.
+  //
+  // So the body is bounded by the QUOTE, not by the separator: look for the
+  // dangerous token inside the quoted argument, or — when the argument is
+  // unquoted — up to the first real separator.
+  { re: new RegExp(String.raw`(?:python3?|node|perl|ruby)\s+-[a-z]*[ce]\s+(?:"[^"]*${DANGEROUS_CALL}|'[^']*${DANGEROUS_CALL}|[^;&|\n'"]*${DANGEROUS_CALL})`, 'i'), label: 'dangerous interpreter one-liner' },
   // subshell expansion feeding rm -rf
   { re: new RegExp(CMD_POS + String.raw`rm\s+${SEG}-[a-z]*r[a-z]*f[a-z]*\s+${SEG}(?:\$\(|` + '`)'), label: 'rm -rf with subshell expansion' },
 ];

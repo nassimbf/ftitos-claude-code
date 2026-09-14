@@ -95,6 +95,14 @@ const MUST_ALLOW = [
   // delete a relative path and then run something harmless.
   'rm -rf build && ls skills/',
   'rm -rf node_modules && ls /',
+  // THIRD instance of the borrowed-evidence class (2026-09-14, found while
+  // probing the injection scanner). The interpreter-one-liner rule used `.*`,
+  // which runs straight past a separator, so a harmless `node -e` was judged
+  // against an `rm` belonging to a different command later in the chain. SEG
+  // stops at the first `;`, `&`, `|` or newline — where the command being
+  // judged actually ends.
+  'node -e "console.log(1)"; rm -f /tmp/scratch',
+  'python3 -c "print(1)" ; rm /tmp/y',
   // Guards on the obfuscation rules added 2026-09-14. Each mechanism has an
   // ordinary, frequent, legitimate form, and a guard that blocks those is a guard
   // the user turns off.
