@@ -30,6 +30,11 @@ const MUST_BLOCK = [
   'git stash pop --index',
   'python3 -c "import os; os.system(\'rm -rf /\')"',
   'sh -c "rm -rf ~/"',
+  // Command position, reached via a chain or a runner prefix. These must keep
+  // blocking once argument-position matches stop counting (see MUST_ALLOW).
+  'make build; rm -rf /',
+  'sudo rm -rf /',
+  'find . -type d | xargs rm -rf /',
 ];
 
 const MUST_ALLOW = [
@@ -42,6 +47,13 @@ const MUST_ALLOW = [
   'git commit -m "docs: explain why git stash pop is banned"',
   "git commit -m 'fix: block rm -rf / in the safety net'",
   'git commit -F /tmp/msg.txt',
+  // Regression (observed 2026-09-14): `rm` appearing as an *argument* was matched
+  // like `rm` in command position, so searching the docs for the string you are
+  // forbidden to run was itself forbidden. Only `echo` and commit messages were
+  // special-cased; every other consumer of the literal text still tripped.
+  'grep -r "rm -rf ~" ./docs',
+  'rg "rm -rf /" --glob "*.md"',
+  'echo "rm -rf /"',
 ];
 
 const cases = [

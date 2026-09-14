@@ -77,8 +77,16 @@ function normalizeFlags(cmd) {
   });
 }
 
+// `\brm\b` matched `rm` anywhere in the string, so a command that merely *carried*
+// the text — `grep -r "rm -rf ~" ./docs` — was blocked (observed 2026-09-14).
+// `echo` and commit messages had bespoke exemptions; every other consumer did not.
+// Matching command position instead of any position fixes the whole class: a word
+// is a command when it opens the string or follows a separator, optionally behind
+// a runner that execs its argument (`sudo rm`, `xargs rm`). Anything else is data.
+const CMD_POS = String.raw`(?:^|[;&|(\n])\s*(?:(?:sudo|doas|xargs|time|nohup|env|command)\s+(?:-\S+\s+)*)*`;
+
 const PATTERNS = [
-  { re: /\brm\b(?=[\s\S]*-[a-z]*f)(?=[\s\S]*-[a-z]*r)(?=[\s\S]*(?:\/(?:\s|$)|~|\$(?:HOME|\{HOME\})|\.\.\/.*\.\.\/))/, label: 'rm -rf targeting root, home, or .. chain' },
+  { re: new RegExp(CMD_POS + String.raw`rm\b(?=[\s\S]*-[a-z]*f)(?=[\s\S]*-[a-z]*r)(?=[\s\S]*(?:\/(?:\s|$)|~|\$(?:HOME|\{HOME\})|\.\.\/.*\.\.\/))`), label: 'rm -rf targeting root, home, or .. chain' },
   { re: /\bgit\s+push\b.*(?:--force|-f)\b/, label: 'git push --force' },
   { re: /\bgit\s+reset\s+--hard\b/, label: 'git reset --hard' },
   { re: /\bDROP\s+(?:DATABASE|TABLE)\b/i, label: 'DROP DATABASE or DROP TABLE' },
@@ -95,7 +103,7 @@ const PATTERNS = [
   // (observed 2026-08-12 while testing the hook against `python3 -c`).
   { re: /(?:python3?|node|perl|ruby)\s+-[a-z]*[ce]\s+.*(?:os\.system|subprocess|exec|eval|unlink|rmdir|rm)/i, label: 'dangerous interpreter one-liner' },
   // subshell expansion feeding rm -rf
-  { re: /\brm\s+.*-[a-z]*r[a-z]*f[a-z]*\s+.*(?:\$\(|`)/, label: 'rm -rf with subshell expansion' },
+  { re: new RegExp(CMD_POS + String.raw`rm\s+.*-[a-z]*r[a-z]*f[a-z]*\s+.*(?:\$\(|` + '`)'), label: 'rm -rf with subshell expansion' },
 ];
 
 function check(cmd) {
