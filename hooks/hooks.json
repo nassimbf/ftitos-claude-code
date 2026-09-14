@@ -60,6 +60,16 @@
             "description": "refuse a Write that guts a curated artifact"
           }
         ]
+      },
+      {
+        "matcher": "Read|Grep|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/secret-read-guard.js\"",
+            "description": "block reads of .env / .secrets via Read, Grep or Bash"
+          }
+        ]
       }
     ],
     "PostToolUse": [
