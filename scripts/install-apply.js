@@ -118,6 +118,10 @@ function copyDirectory(srcDir, destDir, opts, exclude) {
 
     if (exists && !stale) {
       console.log(`  SKIP (identical): ${destFile}`);
+      // Still OURS. The manifest records what the installer owns, not what this
+      // run happened to touch — otherwise a no-op install rewrites the manifest
+      // empty and uninstall.js has nothing to remove.
+      installed.push(destFile);
       continue;
     }
 
@@ -208,7 +212,9 @@ function mergeHooks(srcPath, destPath, opts) {
 
   if (addedCount === 0) {
     console.log("  HOOKS: All hooks already present in settings.json");
-    return [];
+    // settings.json is still ours to record. Returning [] here dropped it from
+    // the manifest on every no-op install.
+    return fs.existsSync(destPath) ? [destPath] : [];
   }
 
   const merged = { ...existingSettings, hooks: mergedHooks };
@@ -229,16 +235,60 @@ function mergeHooks(srcPath, destPath, opts) {
   return [destPath];
 }
 
-function writeManifest(home, installedFiles) {
+function readManifestFiles(home) {
+  const manifestPath = path.join(home, ".claude", MANIFEST_NAME);
+  if (!fs.existsSync(manifestPath)) return [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    return Array.isArray(parsed.files) ? parsed.files : [];
+  } catch {
+    return []; // unreadable manifest: reap nothing rather than guess
+  }
+}
+
+// Remove files this installer previously installed and no longer ships.
+//
+// Nothing did this before, so every version since v3 left its scripts behind —
+// 31 orphans had accumulated in ~/.claude/scripts/hooks/ by v6. None were
+// registered and none ran, but `ls` there stopped answering "what is installed?"
+// truthfully, which is the kind of wrong map this harness exists to avoid.
+//
+// The safety property that makes this acceptable: it only ever removes paths
+// recorded in OUR manifest. A user's own hook, or another tool's, was never in
+// it and is never touched. An unreadable manifest reaps nothing.
+function reapStale(home, ownedNow, opts) {
+  const owned = new Set(ownedNow);
+  const stale = readManifestFiles(home).filter(f => !owned.has(f) && fs.existsSync(f));
+  if (!stale.length) return [];
+
+  for (const file of stale) {
+    if (opts.dryRun) {
+      console.log(`  WOULD REMOVE (no longer shipped): ${file}`);
+      continue;
+    }
+    try {
+      fs.unlinkSync(file);
+      console.log(`  REMOVED (no longer shipped): ${file}`);
+    } catch (err) {
+      console.log(`  SKIP (could not remove ${file}): ${err.message}`);
+    }
+  }
+  return stale;
+}
+
+function writeManifest(home, ownedFiles) {
   const manifestPath = path.join(home, ".claude", MANIFEST_NAME);
   const manifest = {
     version: VERSION,
     installedAt: new Date().toISOString(),
-    files: installedFiles,
+    // Everything the installer OWNS, not just what this run changed. uninstall.js
+    // removes this list, so recording only the delta made a second install
+    // silently empty it and left uninstall with nothing to do.
+    files: ownedFiles,
   };
   ensureDir(path.dirname(manifestPath));
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
-  console.log(`\nManifest written to ${manifestPath}`);
+  console.log(`\nManifest written to ${manifestPath} (${ownedFiles.length} files owned)`);
 }
 
 function main() {
@@ -307,8 +357,10 @@ function main() {
             } else {
               console.log(`  WOULD COPY: TIER.md -> ${destFile}`);
             }
-            allInstalled.push(destFile);
           }
+          // Owned regardless of whether this run copied it — same reason as
+          // SKIP (identical) in copyDirectory.
+          if (fs.existsSync(destFile) || opts.dryRun) allInstalled.push(destFile);
         }
       }
     }
@@ -319,6 +371,10 @@ function main() {
   const hooksDest = path.join(home, SETTINGS_DEST);
   const hookFiles = mergeHooks(hooksSrc, hooksDest, opts);
   allInstalled.push(...hookFiles);
+
+  // Reap BEFORE writing the manifest: the comparison is old manifest vs what we
+  // own now, so the old one has to still be on disk.
+  reapStale(home, allInstalled, opts);
 
   if (!opts.dryRun) {
     writeManifest(home, allInstalled);
