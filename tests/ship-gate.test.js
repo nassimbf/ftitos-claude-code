@@ -27,7 +27,20 @@ const {
   manifestsInDiff,
   parseNpmAudit,
   parsePipAudit,
+  rulesForFile,
 } = require('../hooks/scripts/ship-gate.js');
+
+// A unified diff for one file. The scanner has to know which file a line belongs
+// to, because the rules that apply depend on it.
+function diffFor(file, ...addedLines) {
+  return [
+    `diff --git a/${file} b/${file}`,
+    `--- a/${file}`,
+    `+++ b/${file}`,
+    '@@ -0,0 +1 @@',
+    ...addedLines.map(l => `+${l}`),
+  ].join('\n');
+}
 
 // A diff line is only interesting when it is ADDED (+). Removing a console.log
 // must never be blocked — that is the fix, not the offence.
@@ -194,6 +207,164 @@ const cases = [
     assert.strictEqual(findings.length, 1);
     assert.strictEqual(findings[0].package, 'requests');
     assert(findings[0].id.includes('GHSA'), 'finding must carry the advisory id');
+  }],
+
+  // --- which rules apply to which file ----------------------------------
+  //
+  // Found by running the gate against its own 41-commit branch: 222 findings,
+  // essentially all false positives. Documentation shows example code, and a
+  // test suite for a secret scanner must contain secret-shaped strings — that
+  // is the test. A gate that fires 222 times on a legitimate push is a gate
+  // switched off the same day, which is the exact failure this hook's own
+  // header warns about.
+
+  ['source files get every rule', () => {
+    const rules = rulesForFile('src/app.ts');
+    assert(rules.includes('secret') && rules.includes('debug') && rules.includes('todo'));
+  }],
+
+  ['markdown keeps secret checks but drops debug and todo', () => {
+    const rules = rulesForFile('docs/guide.md');
+    assert(rules.includes('secret'), 'a real key pasted into docs is still a leak');
+    assert(!rules.includes('debug'), 'docs legitimately show console.log in examples');
+    assert(!rules.includes('todo'), 'docs legitimately discuss TODO markers');
+  }],
+
+  // A detector's test suite has to contain the thing it detects. This repo's
+  // own tests/secrets-block.test.js carries AWS's documented example key.
+  ['test files are exempt, because a detector test must contain the pattern', () => {
+    assert.deepStrictEqual(rulesForFile('tests/secrets-block.test.js'), []);
+    assert.deepStrictEqual(rulesForFile('src/__tests__/thing.spec.ts'), []);
+    assert.deepStrictEqual(rulesForFile('app/tests/test_scanner.py'), []);
+  }],
+
+  ['a file that merely has "test" in its name is not exempt', () => {
+    assert(rulesForFile('src/latest-config.ts').includes('debug'),
+      'latest-config is not a test file');
+    assert(rulesForFile('src/contest.js').includes('debug'));
+  }],
+
+  ['debug artifacts in documentation do not fire', () => {
+    const findings = scanDiff(diffFor('agents/debugger.md',
+      "console.log('[1] Starting validation');",
+      'return <div>{/* TODO */}</div>'));
+    assert.deepStrictEqual(findings, [], 'example code in docs is not a defect');
+  }],
+
+  ['a real key in documentation still fires', () => {
+    const findings = scanDiff(diffFor('README.md', `key = "${FAKE_AWS_KEY}"`));
+    assert(findings.some(f => f.kind === 'secret'), 'a leaked key is a leak wherever it sits');
+  }],
+
+  ['debug artifacts in source still fire', () => {
+    const findings = scanDiff(diffFor('src/handler.ts', '  console.log("here");'));
+    assert(findings.some(f => f.kind === 'debug'));
+  }],
+
+  ['findings name the file they came from', () => {
+    const [finding] = scanDiff(diffFor('src/handler.ts', '  debugger;'));
+    assert.strictEqual(finding.file, 'src/handler.ts');
+  }],
+
+  ['a multi-file diff attributes each finding correctly', () => {
+    const combined = [
+      diffFor('docs/a.md', "console.log('example');"),
+      diffFor('src/b.ts', "console.log('real');"),
+    ].join('\n');
+    const findings = scanDiff(combined);
+    assert.strictEqual(findings.length, 1, 'only the source file should fire');
+    assert.strictEqual(findings[0].file, 'src/b.ts');
+  }],
+
+  // The third category, found on the same run. In a CLI, stdout IS the
+  // interface: `scripts/ci/mutation-ratchet.js` printing its score is the entire
+  // point of the program. Calling that a debug artifact left 97 false positives
+  // after the doc and test exemptions had already cleared 120.
+  //
+  // Only console.log is context-dependent this way. A `debugger;` statement or a
+  // `pdb.set_trace()` is a defect in a CLI exactly as much as in a library, so
+  // the exemption is per-RULE, not per-kind.
+  ['console.log in a CLI is output, not a debug artifact', () => {
+    for (const file of ['scripts/ci/doctor.js', 'bin/tool.js', 'tools/gen.js']) {
+      const findings = scanDiff(diffFor(file, "  console.log('score: 91%');"));
+      assert.deepStrictEqual(
+        findings, [],
+        `${file}: printing is what a CLI does`
+      );
+    }
+  }],
+
+  ['a real debugger statement still fires in a CLI', () => {
+    const findings = scanDiff(diffFor('scripts/ci/doctor.js', '  debugger;'));
+    assert(findings.some(f => f.rule === 'js-debugger'),
+      'debugger is a defect wherever it appears');
+  }],
+
+  ['a focused test still fires in a CLI path', () => {
+    const findings = scanDiff(diffFor('scripts/run.js', '  it.only("x", () => {});'));
+    assert(findings.some(f => f.rule === 'focused-test'));
+  }],
+
+  ['console.log in application code still fires', () => {
+    const findings = scanDiff(diffFor('apps/api/handler.ts', "  console.log(user);"));
+    assert(findings.some(f => f.rule === 'console-log'),
+      'application code is not a CLI — stdout is not its interface');
+  }],
+
+  // Fourth category from the same run: vendored third-party code. Most of the
+  // remaining 77 came from skills/browse/, which is gstack's code at a pin. You
+  // cannot fix upstream's console.log in your own push, so flagging it is pure
+  // noise — and noise is what gets a gate switched off.
+  //
+  // Declared rather than guessed: a path like `skills/browse` carries no marker
+  // saying it is vendored, so the project states it in .shipgateignore.
+  ['vendored paths listed in .shipgateignore are exempt', () => {
+    const ignore = ['# vendored from gstack', 'skills/browse/', '', 'skills/cso/'];
+    const findings = scanDiff(
+      diffFor('skills/browse/src/manager.ts', "console.log('[browse] loaded');"),
+      ignore
+    );
+    assert.deepStrictEqual(findings, [], 'upstream code is not ours to gate');
+  }],
+
+  ['an unlisted path is still checked', () => {
+    const ignore = ['skills/browse/'];
+    const findings = scanDiff(
+      diffFor('skills/mine/src/thing.ts', "console.log('mine');"),
+      ignore
+    );
+    assert(findings.some(f => f.rule === 'console-log'));
+  }],
+
+  ['a secret in vendored code still fires', () => {
+    const findings = scanDiff(
+      diffFor('skills/browse/config.ts', `const k = "${FAKE_AWS_KEY}";`),
+      ['skills/browse/']
+    );
+    assert(findings.some(f => f.kind === 'secret'),
+      'a live key is a leak even in vendored code — you are still publishing it');
+  }],
+
+  // "TODO-without-issue-reference" in a comment is prose about TODOs, not a
+  // TODO. The marker has to stand as a word.
+  ['a hyphenated compound is not a TODO marker', () => {
+    assert.deepStrictEqual(
+      scanDiff(diffFor('src/a.ts', '// bans TODO-without-issue-reference markers')),
+      []
+    );
+    assert.deepStrictEqual(
+      scanDiff(diffFor('src/a.ts', '// see the FIXME-style convention')),
+      []
+    );
+  }],
+
+  ['a real TODO marker still fires after that tightening', () => {
+    assert(scanDiff(diffFor('src/a.ts', '// TODO: handle retries'))
+      .some(f => f.kind === 'todo'));
+    assert(scanDiff(diffFor('src/a.ts', '  # TODO fix this'))
+      .some(f => f.kind === 'todo'));
+    assert(scanDiff(diffFor('src/a.ts', '{/* TODO */}'))
+      .some(f => f.kind === 'todo'));
   }],
 ];
 
