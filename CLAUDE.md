@@ -11,23 +11,27 @@ markdown the model may or may not read.
 ```
 ftitos-claude-code/
 ├── agents/          # 6 specialist agents
-├── skills/          # 8 skills, at the cap the test suite enforces
-│                    # (see skills/TIER.md for admission criteria)
+├── skills/          # 9 skills — no count cap; the budget decides (skills/TIER.md)
 ├── rules/           # 3 always-on files: code, workflow, security
 │   ├── python/      # language-specific, loaded on demand
 │   └── typescript/
 ├── hooks/
-│   ├── hooks.json   # 15 registrations, merged into settings.json at install
-│   └── scripts/     # the enforcement layer
-├── commands/        # /go, /plan, /project:*
-├── pipeline/        # 9 phase definitions used by /project:sprint
-├── frameworks/      # BASE, PAUL, Aegis, CARL
-├── scripts/         # install-apply, uninstall, doctor, diff-scope
-├── tests/
+│   ├── hooks.json   # 17 registrations, merged into settings.json at install
+│   └── scripts/     # 18 scripts — the enforcement layer
+├── scripts/
+│   ├── ci/          # 6 validators, run by doctor and the git hooks
+│   └── ...          # install-apply, uninstall, doctor, devendor-gstack
+├── tests/           # 14 files, run by the pre-commit gate
 ├── templates/
-├── .archive/        # everything v4 removed, kept for reversibility
+│   └── git-hooks/   # pre-commit + commit-msg, installed into a clone
+├── .archive/        # every removal, kept reversible
 └── install.sh
 ```
+
+`commands/`, `pipeline/` and `frameworks/` were removed in v5 (`416e603`). The
+first two were never in the installer's copy map — Claude Code had never read a
+byte of either. `commands/` was installed and broken: `/go` chained to 17
+commands, ten of which did not exist.
 
 ## The rule that governs this repo
 
@@ -70,9 +74,38 @@ diff hooks/scripts/<name>.js ~/.claude/scripts/hooks/<name>.js
 
 ## Budget
 
-`node scripts/doctor.js` fails if always-on context exceeds 8,000 tokens. That number is
-the whole design constraint — skills, agents, commands and rules all spend from it on every
-session. Check it before adding anything.
+Two instruments, and you want both.
+
+```bash
+node scripts/doctor.js                      # ceiling: fails past 8,000 tokens
+node scripts/ci/always-on-budget.js         # per file, against a baseline
+node scripts/ci/always-on-budget.js --write # record deliberate growth
+```
+
+The ceiling catches disasters. The baseline catches creep — the 200-token
+description edit that never trips a ceiling but spends the budget just as surely.
+Growth fails with the file and the delta named; recording it lands in review as a
+one-line diff stating the new cost.
+
+v4 also capped the skill count at 8. That was a proxy, and it was wrong in both
+directions: it blocked a 61-token skill while unbounded description growth passed.
+The count is no longer asserted.
+
+What the measurement showed first: `rules/*.md` is 57% of the always-on surface.
+The skills are the cheap part.
+
+## What the gates actually are
+
+Three of them, and each exists because the previous one could be walked around.
+
+| Gate | Enforces |
+|---|---|
+| `.git/hooks/pre-commit` | 14 test files + doctor |
+| `.git/hooks/commit-msg` | a `fix:`/`feat:` commit carries a regression test |
+| `block-no-verify.js` | that the two above cannot be skipped |
+
+The third is the load-bearing one. Before it, every gate here was optional —
+`--no-verify`, or `-c core.hooksPath=`, and none of it ran.
 
 ## Development
 
