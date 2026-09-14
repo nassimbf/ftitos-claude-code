@@ -43,6 +43,23 @@ const MUST_BLOCK = [
   'true\n{ rm -rf /; }',
   "r''m -rf /",
   'r""m -rf /',
+  // Obfuscation that survived every guard above (probed 2026-09-14 against the
+  // shipped hook). Each bypasses a different assumption:
+  //
+  // `${IFS}` is an own-goal. CMD_POS anchors a command to `^` or a separator, so
+  // prefixing the line with a parameter expansion means the command it expands to
+  // occupies neither position and the whole guard falls through. The brace-group
+  // hardening that put this hook ahead of upstream is what opened it.
+  '${IFS}rm -rf ~',
+  '$IFS rm -rf /',
+  // Variable indirection: the dangerous word never appears as a literal command.
+  'X=rm; $X -rf /',
+  'CMD=rm && $CMD -rf ~',
+  // base64 -> shell. The payload decodes to `rm -rf /`; nothing in the visible
+  // text matches any pattern. The pipe-to-shell rule only knew curl and wget.
+  'echo cm0gLXJmIC8= | base64 -d | sh',
+  'echo cm0gLXJmIC8= | base64 --decode | bash',
+  'eval "$(echo cm0gLXJmIC8= | base64 -d)"',
 ];
 
 const MUST_ALLOW = [
@@ -68,6 +85,16 @@ const MUST_ALLOW = [
   // delete a relative path and then run something harmless.
   'rm -rf build && ls skills/',
   'rm -rf node_modules && ls /',
+  // Guards on the obfuscation rules added 2026-09-14. Each mechanism has an
+  // ordinary, frequent, legitimate form, and a guard that blocks those is a guard
+  // the user turns off.
+  'eval "$(ssh-agent -s)"',          // the canonical eval; blocking it is a non-starter
+  'eval "$(direnv hook zsh)"',
+  'echo hello | base64',             // encoding is not decoding
+  'base64 -d payload.b64 > out.bin', // decoding to a file never reaches a shell
+  'IFS=, read -r a b <<< "1,2"',     // IFS as an actual field separator
+  'X=hello; echo $X',                // a variable that is not a command
+  'curl -s https://api.example.com | jq .',  // a pipe whose sink is not a shell
 ];
 
 const cases = [
