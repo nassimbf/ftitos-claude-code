@@ -70,7 +70,15 @@ node scripts/doctor.js
 ```
 
 The installer distinguishes `SKIP (identical)` from `WOULD UPDATE (stale)`, so a hook
-fixed here actually reaches `~/.claude`, and running it twice is a no-op.
+fixed here actually reaches `~/.claude`, and running it twice is a no-op. It also removes
+files it previously installed and no longer ships — and only those, never yours.
+
+**Two skills need a build.** `browse` and `qa` drive a real browser through a compiled
+binary that is not committed (~61 MB). If `bun` is available the installer builds it; if
+the build fails or `bun` is missing, those two skills are **skipped with a message** rather
+than installed pointing at a missing executable. Everything else installs either way, and
+`doctor` stays clean. To get them, run `bun install` in `skills/browse/` first, then
+re-run `./install.sh`.
 
 `doctor` exits non-zero on duplicate hook registrations, hooks pointing at missing
 scripts, repo/install version drift, and an always-on budget over 8,000 tokens.

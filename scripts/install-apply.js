@@ -235,6 +235,69 @@ function mergeHooks(srcPath, destPath, opts) {
   return [destPath];
 }
 
+// skills/browse and skills/qa both instruct the model to run
+// `$HOME/.claude/skills/browse/dist/browse`. That binary is ~61 MB and
+// `.gitignore` excludes `skills/browse/dist/`, so it is absent from every clone.
+// Nothing built it and nothing checked, so a fresh install shipped two skills
+// pointing at an executable that was not there — and a new user's first
+// `doctor` run failed with two dangling references (found 2026-09-15 by
+// installing a clean clone into an empty HOME).
+//
+// Rule: never install a skill whose executable is missing. A skill that tells
+// the model to run a binary that does not exist is worse than no skill — the
+// model tries it, fails, and has to recover. Build when we can, skip when we
+// cannot, and leave doctor clean either way.
+const BROWSE_BINARY = path.join("skills", "browse", "dist", "browse");
+const BINARY_DEPENDENT_SKILLS = ["browse", "qa"];
+
+function haveBun() {
+  try {
+    require("child_process").execFileSync("bun", ["--version"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @returns {boolean} whether the browse binary is available to install
+ */
+function ensureBrowseBinary(root, opts) {
+  const binary = path.join(root, BROWSE_BINARY);
+  if (fs.existsSync(binary)) return true;
+
+  const builder = path.join(root, "skills", "browse", "scripts", "build-node-server.sh");
+  if (!fs.existsSync(builder)) {
+    console.log("  browse: binary absent and no build script — skipping browse and qa");
+    return false;
+  }
+  if (!haveBun()) {
+    console.log("  browse: binary absent and bun not installed — skipping browse and qa.");
+    console.log("          Install bun and re-run, or use these skills from gstack directly.");
+    return false;
+  }
+  if (opts.dryRun) {
+    console.log("  browse: binary absent — WOULD BUILD via skills/browse/scripts/build-node-server.sh");
+    return false;
+  }
+
+  console.log("  browse: binary absent — building (this takes a moment)...");
+  try {
+    require("child_process").execFileSync("bash", [builder], {
+      cwd: root, stdio: "inherit", timeout: 300_000,
+    });
+  } catch (err) {
+    console.log(`  browse: build failed (${err.message.split("\n")[0]}) — skipping browse and qa`);
+    return false;
+  }
+
+  const built = fs.existsSync(binary);
+  console.log(built
+    ? "  browse: built"
+    : "  browse: build reported success but produced no binary — skipping browse and qa");
+  return built;
+}
+
 function readManifestFiles(home) {
   const manifestPath = path.join(home, ".claude", MANIFEST_NAME);
   if (!fs.existsSync(manifestPath)) return [];
@@ -339,9 +402,14 @@ function main() {
     const skillsDest = path.join(home, ".claude", "skills");
     if (fs.existsSync(skillsSrc)) {
       console.log(`\nskills/ -> .claude/skills/`);
+      const browseReady = ensureBrowseBinary(root, opts);
       const entries = fs.readdirSync(skillsSrc, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.isDirectory()) {
+          if (!browseReady && BINARY_DEPENDENT_SKILLS.includes(entry.name)) {
+            console.log(`  SKIP (needs the browse binary): ${entry.name}`);
+            continue;
+          }
           const srcSkill = path.join(skillsSrc, entry.name);
           const destSkill = path.join(skillsDest, entry.name);
           const installed = copyDirectory(srcSkill, destSkill, opts);
