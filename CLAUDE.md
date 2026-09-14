@@ -11,7 +11,8 @@ markdown the model may or may not read.
 ```
 ftitos-claude-code/
 ├── agents/          # 6 specialist agents
-├── skills/          # 6 skills (see skills/TIER.md for admission criteria)
+├── skills/          # 8 skills, at the cap the test suite enforces
+│                    # (see skills/TIER.md for admission criteria)
 ├── rules/           # 3 always-on files: code, workflow, security
 │   ├── python/      # language-specific, loaded on demand
 │   └── typescript/
@@ -47,6 +48,17 @@ fixed in the field and never committed back:
 
 If you fix something in `~/.claude`, commit it here the same day. v3 lost both of these for
 two months because nobody did.
+
+The reverse direction leaks too, and it is the one nobody notices: `install-apply.js`
+skips any file that already exists, so a hook fixed *here* never reaches `~/.claude`
+unless you pass `--force` or copy it yourself. On 2026-09-14 the live `cc-safety-net.js`
+was two fixes behind this repo and blocked a legitimate commit; the repo copy had been
+correct the whole time. Until the installer distinguishes "already present" from
+"present and stale", verify the live copy after changing a hook:
+
+```bash
+diff hooks/scripts/<name>.js ~/.claude/scripts/hooks/<name>.js
+```
 
 ## Conventions
 
