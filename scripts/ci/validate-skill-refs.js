@@ -26,8 +26,9 @@ const path = require('path');
 
 const root = process.argv[2] || path.join(__dirname, '..', '..');
 const skillsDir = path.join(root, 'skills');
+const agentsDir = path.join(root, 'agents');
 
-if (!fs.existsSync(skillsDir)) process.exit(0);
+if (!fs.existsSync(skillsDir) && !fs.existsSync(agentsDir)) process.exit(0);
 
 // Referenced install paths are rooted at the skills directory: the repo's
 // skills/ is what becomes ~/.claude/skills/ at install time.
@@ -57,7 +58,33 @@ function fencedLines(text) {
 
 const problems = [];
 
-for (const file of markdownFiles(skillsDir)) {
+// Agents pull in reference files with `@path`. An agent copied without its
+// references does not fail loudly — it becomes a confident-sounding skeleton,
+// which is worse than a missing file. Checked outside fences too, because an
+// @-include is an instruction wherever it appears.
+if (fs.existsSync(agentsDir)) {
+  for (const file of markdownFiles(agentsDir)) {
+    const text = fs.readFileSync(file, 'utf8');
+    text.split('\n').forEach((line, i) => {
+      // Preceded by start-of-line or whitespace, so an email address is not a hit.
+      const matches = line.match(/(?:^|\s)@([A-Za-z0-9._~/-]+\.md)\b/g);
+      if (!matches) return;
+      for (const raw of matches) {
+        const ref = raw.trim().slice(1);
+        const candidates = [
+          path.resolve(path.dirname(file), ref),
+          path.join(agentsDir, ref),
+          path.join(root, ref.replace(/^(~|\$HOME)\/\.claude\//, '')),
+        ];
+        if (!candidates.some(c => fs.existsSync(c))) {
+          problems.push(`${path.relative(root, file)}:${i + 1}  @${ref}`);
+        }
+      }
+    });
+  }
+}
+
+for (const file of fs.existsSync(skillsDir) ? markdownFiles(skillsDir) : []) {
   for (const [lineNo, line] of fencedLines(fs.readFileSync(file, 'utf8'))) {
     const matches = line.match(new RegExp(`(?:~|\\$HOME)/\\.claude/skills/[A-Za-z0-9._/-]+`, 'g'));
     if (!matches) continue;
@@ -80,7 +107,7 @@ for (const file of markdownFiles(skillsDir)) {
 }
 
 if (problems.length === 0) {
-  console.log('validate-skill-refs: all fenced skill references resolve');
+  console.log('validate-skill-refs: all skill and agent references resolve');
   process.exit(0);
 }
 

@@ -92,6 +92,33 @@ const cases = [
     const root = harness({ 'README.md': 'nothing here\n' });
     assert(check(root).ok);
   }],
+
+  // Agents have the same failure mode by a different syntax. gsd's agents
+  // @-include reference files; copying the agent without them leaves a
+  // confident-sounding skeleton rather than an obvious break.
+  ['an agent @-including a reference that is not vendored fails', () => {
+    const root = harness({
+      'agents/debugger.md': '---\nname: debugger\n---\n\nTechnique catalogue: @references/debugger-sbfl.md\n',
+    });
+    const { ok, out } = check(root);
+    assert(!ok, 'must fail');
+    assert(/debugger-sbfl/.test(out), `must name the missing reference, got: ${out}`);
+  }],
+
+  ['an agent @-including a reference that IS vendored passes', () => {
+    const root = harness({
+      'agents/debugger.md': '---\nname: debugger\n---\n\nTechnique catalogue: @references/debugger-sbfl.md\n',
+      'agents/references/debugger-sbfl.md': '# SBFL\n',
+    });
+    assert(check(root).ok);
+  }],
+
+  ['an email address is not an @-include', () => {
+    const root = harness({
+      'agents/x.md': '---\nname: x\n---\n\nReport to someone@example.invalid about this.\n',
+    });
+    assert(check(root).ok, 'an @ mid-word is not a reference');
+  }],
 ];
 
 let passed = 0;
