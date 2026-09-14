@@ -1,5 +1,5 @@
 {
-  "totalTokens": 2443,
+  "totalTokens": 2603,
   "sizes": {
     "skills/TIER.md": 0,
     "skills/browse/SKILL.md": 296,
@@ -11,12 +11,14 @@
     "skills/loop-engine/SKILL.md": 239,
     "skills/qa/SKILL.md": 277,
     "skills/spec-driven-development/SKILL.md": 264,
-    "agents/architect.md": 286,
-    "agents/code-reviewer.md": 284,
-    "agents/debugger.md": 247,
-    "agents/planner.md": 297,
+    "agents/code-reviewer.md": 260,
+    "agents/debugger.md": 385,
+    "agents/opensource-sanitizer.md": 382,
+    "agents/plan-checker.md": 215,
     "agents/python-reviewer.md": 273,
-    "agents/security-reviewer.md": 370,
+    "agents/security-auditor.md": 279,
+    "agents/silent-failure-hunter.md": 181,
+    "agents/verifier.md": 420,
     "rules/code.md": 1971,
     "rules/security.md": 1562,
     "rules/workflow.md": 2037
