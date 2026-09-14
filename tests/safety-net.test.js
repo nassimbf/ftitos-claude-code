@@ -60,6 +60,16 @@ const MUST_BLOCK = [
   'echo cm0gLXJmIC8= | base64 -d | sh',
   'echo cm0gLXJmIC8= | base64 --decode | bash',
   'eval "$(echo cm0gLXJmIC8= | base64 -d)"',
+  // The other side of the command-position fix: anchoring must not let a real
+  // destructive command through. Each of these runs the thing.
+  'git reset --hard HEAD~3',
+  'chmod 777 /etc/passwd',
+  'make deploy; git push --force origin main',
+  'cd /repo && git clean -fdx',
+  // SQL reaching an actual client is still executed, wherever it sits in the
+  // string. `psql -c "DROP TABLE users"` is the normal way to run it.
+  'psql -c "DROP TABLE users"',
+  'mysql -e "DROP DATABASE prod"',
 ];
 
 const MUST_ALLOW = [
@@ -88,6 +98,21 @@ const MUST_ALLOW = [
   // Guards on the obfuscation rules added 2026-09-14. Each mechanism has an
   // ordinary, frequent, legitimate form, and a guard that blocks those is a guard
   // the user turns off.
+  // The command-position fix landed for `rm` only (a47f4d8, e544109); the other
+  // six patterns kept matching their literal text anywhere in the string. Found
+  // 2026-09-14 when the hook blocked a probe script that merely *contained* the
+  // words `git push --force` inside a quoted JSON payload. Same regression class
+  // as the `grep -r "rm -rf ~"` case already fixed above, six rules later.
+  'echo "git push --force is banned"',
+  'grep -r "git reset --hard" ./docs',
+  'echo "never run chmod 777 on prod"',
+  'grep -rn "git clean -fdx" ./notes',
+  'echo "use git stash apply, not git stash pop"',
+  // SQL is different: it legitimately lives in argument position, so DROP stays
+  // matchable anywhere and is exempted by the CONSUMER instead. Searching for it
+  // is reading; running it through a client is not.
+  'rg "DROP TABLE users" --glob "*.sql"',
+  'grep -rn "DROP DATABASE" ./migrations',
   'eval "$(ssh-agent -s)"',          // the canonical eval; blocking it is a non-starter
   'eval "$(direnv hook zsh)"',
   'echo hello | base64',             // encoding is not decoding

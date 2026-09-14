@@ -124,15 +124,25 @@ const PATTERNS = [
   // Accepting only the first two meant `{ rm -rf /; }` read as a path `/;` and
   // fell through — the brace-group bypass was two bugs, not one.
   { re: new RegExp(CMD_POS + String.raw`rm\b(?=${SEG}-[a-z]*f)(?=${SEG}-[a-z]*r)(?=${SEG}(?:\/(?:\s|$|[;&|)}])|~|\$(?:HOME|\{HOME\})|\.\.\/.*\.\.\/))`), label: 'rm -rf targeting root, home, or .. chain' },
-  { re: /\bgit\s+push\b.*(?:--force|-f)\b/, label: 'git push --force' },
-  { re: /\bgit\s+reset\s+--hard\b/, label: 'git reset --hard' },
-  { re: /\bDROP\s+(?:DATABASE|TABLE)\b/i, label: 'DROP DATABASE or DROP TABLE' },
-  { re: /\bchmod\s+(?:-R\s+)?(?:777|a\+rwx)\b/, label: 'chmod 777 / chmod -R 777' },
-  { re: /\bgit\s+clean\b(?=[\s\S]*-[a-z]*f)/, label: 'git clean -f / -fd / -fdx' },
+  // These five carried the original `\b`-anywhere matching after `rm` was moved
+  // to command position (a47f4d8, e544109). The fix was applied to one rule, not
+  // to the class, so `echo "git push --force is banned"` and
+  // `grep -r "git reset --hard" ./docs` were both blocked — writing about a
+  // command is not running it, the same regression already fixed for `rm`.
+  { re: new RegExp(CMD_POS + String.raw`git\s+push\b${SEG}(?:--force|--force-with-lease|-f)\b`), label: 'git push --force' },
+  { re: new RegExp(CMD_POS + String.raw`git\s+reset\s+--hard\b`), label: 'git reset --hard' },
+  { re: new RegExp(CMD_POS + String.raw`chmod\s+(?:-R\s+)?(?:777|a\+rwx)\b`), label: 'chmod 777 / chmod -R 777' },
+  { re: new RegExp(CMD_POS + String.raw`git\s+clean\b(?=${SEG}-[a-z]*f)`), label: 'git clean -f / -fd / -fdx' },
+  // SQL is the exception and must NOT be anchored to command position: it lives
+  // in argument position by nature — `psql -c "DROP TABLE users"` is how you run
+  // it. So it stays matchable anywhere, and the exemption moves to the CONSUMER
+  // instead (see isTextConsumer): searching a migration for DROP TABLE is
+  // reading, piping it into a database client is not.
+  { re: /\bDROP\s+(?:DATABASE|TABLE)\b/i, label: 'DROP DATABASE or DROP TABLE', textSafe: true },
   // Stash stack is shared across all worktrees: a bare pop can apply ANOTHER
   // session's WIP into this tree (observed failure 2026-06-10, phase1-tools).
   // Require an explicit ref: git stash apply stash@{n} (apply keeps the entry).
-  { re: /\bgit\s+stash\s+pop\b(?![\s\S]*stash@\{\d+\})/, label: 'bare git stash pop (shared stash stack across worktrees — use git stash apply stash@{n} with explicit ref instead)' },
+  { re: new RegExp(CMD_POS + String.raw`git\s+stash\s+pop\b(?![\s\S]*stash@\{\d+\})`), label: 'bare git stash pop (shared stash stack across worktrees — use git stash apply stash@{n} with explicit ref instead)' },
   { re: /(?:curl|wget)\s+[^|]+\|\s*(?:bash|sh|zsh|dash)\b/, label: 'remote code execution via pipe to shell' },
   // Decoding a payload straight into an interpreter. decodedPayloads() already
   // scans the *content*; this catches the mechanism itself, which still holds
@@ -191,8 +201,25 @@ function resolveAssignments(cmd) {
   return out;
 }
 
+// Tools that only read or print text. When one of these is what runs, a
+// dangerous-looking string among its arguments is the thing being searched for,
+// not a thing being executed — `rg "DROP TABLE users" --glob "*.sql"` is how you
+// audit a schema. Command-position anchoring cannot express this, because SQL
+// legitimately sits in argument position either way; the difference is entirely
+// in who consumes it. Deliberately excludes anything that can execute a match
+// (find -exec, xargs, awk system()).
+const TEXT_CONSUMERS = /^(?:grep|egrep|fgrep|rg|ag|ack|echo|printf|cat|bat|less|more|head|tail|wc|sort|uniq|diff|comm)\b/;
+
+function isTextConsumer(cmd) {
+  return String(cmd || '').trim().split(/[;&|\n]/).every(segment => {
+    const seg = segment.trim();
+    return seg === '' || TEXT_CONSUMERS.test(seg);
+  });
+}
+
 function check(cmd) {
   const cleaned = collapseEmptyQuotes(stripCommitMessages(cmd));
+  const textOnly = isTextConsumer(cleaned);
   // Order matters. IFS expansion restores the word boundaries and the leading
   // command position, so assignment resolution can see `X=rm` at all; both must
   // precede pattern matching. Decoded payloads are analysed as commands in their
@@ -204,7 +231,11 @@ function check(cmd) {
   ];
   for (const layer of layers) {
     const normalized = normalizeFlags(layer);
-    for (const { re, label } of PATTERNS) {
+    for (const { re, label, textSafe } of PATTERNS) {
+      // textSafe rules match in argument position by design, so they are the
+      // only ones a read-only consumer can exempt. Every other rule is already
+      // anchored to command position and needs no exemption.
+      if (textSafe && textOnly) continue;
       if (re.test(normalized)) return label;
     }
   }
