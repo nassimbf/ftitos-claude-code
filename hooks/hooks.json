@@ -90,6 +90,16 @@
             "description": "refuse to let the pre-commit gate be skipped"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/config-protection.js\"",
+            "description": "do not let the quality bar be edited mid-task"
+          }
+        ]
       }
     ],
     "PostToolUse": [
