@@ -50,6 +50,16 @@
             "description": "snapshot before edit"
           }
         ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/write-shrink-guard.js\"",
+            "description": "refuse a Write that guts a curated artifact"
+          }
+        ]
       }
     ],
     "PostToolUse": [
