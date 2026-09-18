@@ -1,13 +1,15 @@
 {
-  "totalTokens": 4440,
+  "totalTokens": 4572,
   "sizes": {
     "skills/TIER.md": 0,
     "skills/brainstorming/SKILL.md": 233,
     "skills/codebase-onboarding/SKILL.md": 290,
     "skills/council/SKILL.md": 225,
+    "skills/cso/SKILL.md": 256,
     "skills/deep-research/SKILL.md": 277,
     "skills/graphify/SKILL.md": 385,
     "skills/intent-driven-development/SKILL.md": 610,
+    "skills/review/SKILL.md": 272,
     "skills/spec-driven-development/SKILL.md": 264,
     "skills/speckit-analyze/SKILL.md": 435,
     "skills/speckit-checklist/SKILL.md": 389,

@@ -33,12 +33,14 @@ const skillsDir = path.join(__dirname, '..', 'skills');
 const RETARGET = [
   [/(~|\$HOME)\/\.claude\/skills\/gstack\/browse\//g, '$1/.claude/skills/browse/'],
   [/(~|\$HOME)\/\.claude\/skills\/gstack\/(cso|qa)\//g, '$1/.claude/skills/$2/'],
-  [/(~|\$HOME)\/\.claude\/skills\/gstack\/bin\/gstack-egress-lib\.sh/g,
-    '$1/.claude/skills/browse/bin/gstack-egress-lib.sh'],
+  // The egress library used to be retargeted at the vendored browse skill. browse
+  // moved to skills-archive/, and an archived skill is not a runtime dependency,
+  // so the reference falls through to NEUTRALISE like the rest of gstack/bin.
 ];
 
-// Suite-only binaries. Anything still pointing at gstack/bin after RETARGET.
-const SUITE_BIN = /(?:~|\$HOME|\.)?\/?\.claude\/skills\/gstack\/bin\/(gstack-[a-z-]+(?:\.sh)?)/;
+// Suite-only helpers. Anything still pointing at the gstack suite after RETARGET,
+// plus the browse skill: it moved to skills-archive/, so nothing may call into it.
+const SUITE_BIN = /(?:~|\$HOME|\.)?\/?\.claude\/skills\/(?:gstack\/(?:bin|lib)|browse(?:\/bin)?)\/([A-Za-z0-9._-]+)/;
 
 function neutraliseLine(line) {
   const m = line.match(SUITE_BIN);
