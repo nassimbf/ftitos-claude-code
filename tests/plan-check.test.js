@@ -20,7 +20,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const CHECK = path.join(__dirname, '..', 'skills', 'build-phases', 'scripts', 'plan-check.js');
+const CHECK = path.join(__dirname, '..', 'skills-archive', 'build-phases', 'scripts', 'plan-check.js');
 
 function project(plans) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-check-'));

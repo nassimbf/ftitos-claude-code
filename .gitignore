@@ -8,4 +8,5 @@ node_modules/
 
 # built artifacts (58MB compiled driver — built on install, not committed)
 skills/browse/dist/
+skills-archive/browse/dist/
 .vendor/

@@ -94,7 +94,7 @@ const cases = [
 
   ['skills without a binary dependency always install', () => withTempHome(home => {
     install(home);
-    for (const skill of ['code-review', 'spec-driven-development']) {
+    for (const skill of ['brainstorming', 'spec-driven-development']) {
       assert(
         fs.existsSync(path.join(home, '.claude', 'skills', skill, 'SKILL.md')),
         `${skill} has no binary dependency and must always install`
