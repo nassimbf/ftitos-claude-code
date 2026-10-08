@@ -1,5 +1,26 @@
 # Changelog
 
+## [7.0.0] — 2026-10-08
+
+v6 is replaced. ECC (profile `core`) and gstack now provide the framework; this repo
+keeps only my own files, under `claude/`, mirroring `~/.claude/`.
+
+### Added
+
+- `claude/rules/`: ponytail, engineering, security, tool-routing, a3-lessons.
+- `claude/output-styles/ftitos.md`: one reply style (ponytail + caveman + ASD-STE100).
+- `claude/skills/council`: blind multi-model review of a diff, plan or decision.
+- `claude/skills/brief`: branch brief written before any A3 edit.
+- `claude/skills/lesson`: turn a corrected mistake into a check.
+- `claude/hooks/a3hooks.py` + `test_a3hooks.py`: bash guard, brief scope guard,
+  hand-over across compaction, doubt check, Stop gate, speedbump, autopush.
+- `claude/settings.json`: sanitized live settings.
+
+### Removed
+
+- All v6 files: Node hooks, installer, doctor, agents, skills, templates, tests, CI.
+  They stay in git history at `38036b5`.
+
 ## [6.0.0] — 2026-09-14
 
 The hardening pass. Almost everything here was found by the harness blocking real work,
