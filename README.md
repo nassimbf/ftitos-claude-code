@@ -1,119 +1,71 @@
 # ftitos-claude-code
 
-A Claude Code harness for shipping client-ready code. Twenty hooks that enforce,
-fourteen agents, nine skills, three always-on rules files. Everything else was
-measured and removed.
+My Claude Code setup, v7. The v6 harness (Node hooks, installer, doctor) is gone; it is
+in git history at `38036b5`. v7 does not write its own framework any more. It installs
+two maintained suites and adds a small set of my own files on top.
 
-## The idea
+## What is in it
 
-**Markdown is advice. Hooks are enforcement.**
-
-A rule written in a markdown file is a rule the model can skip. A rule written as a
-script that exits 2 is not. So the governing rule of this repo is: before adding
-anything to `rules/`, check whether the same guarantee can be made by a script in
-`hooks/scripts/`. If it can, write the script — and write its test first.
-
-The corollary is that nothing ships on the strength of sounding useful. v3 shipped 32
-skills; an audit of 7,077 real prompts over 4.5 months found 26 of them had never been
-invoked once, while always-on context cost 22,162 tokens before the user typed anything.
-v4 removed everything with no evidence behind it. v5 replaced the skill-count cap with a
-measured token budget. v6 added the ship gates below.
-
-| | v3 | now |
+| Layer | Source | Job |
 |---|---|---|
-| Always-on context | ~22,200 tokens | **~6,600** (ceiling 8,000) |
-| Hooks wired | 45, 8 of them duplicated | 20 |
-| Tests | 0 | 20 files, run by the pre-commit gate |
+| ECC, profile `core` | `npx ecc-universal@2.2.1` | Language knowledge, agents, standard hooks |
+| gstack | `garrytan/gstack` | Workflows: `/spec`, `/review`, `/cso`, `/devex-review` |
+| Plugins | ponytail, caveman, i-have-adhd, warp | Always-on code and reply style |
+| **This repo, `claude/`** | mine | Rules, output style, three skills, A3 hooks, settings |
 
-## What it stops
+`claude/` mirrors `~/.claude/`:
 
-| Hook | Event | What it stops |
-|---|---|---|
-| `cc-safety-net.js` | PreToolUse: Bash | `rm -rf ~`, force-push, `git clean -fdx`, bare `git stash pop`. Unwraps `sh -c`/`eval` recursively, resolves `${IFS}` and variable indirection, and decodes base64 payloads rather than matching the surface text. |
-| `pre-secrets-block.js` | PreToolUse: Write\|Edit | Writes to `.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.*`, and content carrying live key material. Allows `*.example` and env-var references. Fails **closed**. |
-| `secret-read-guard.js` | PreToolUse: Read\|Grep\|Bash | Reading a secret file into the conversation, where it stays for every later request and subagent prompt. Fails **closed**. |
-| `ship-gate.js` | PreToolUse: Bash | `git push` / `gh pr create` carrying secrets, `console.log`, `pdb`, `debugger`, `.only` tests, or TODOs with no issue reference. Audits dependencies when a manifest changed. |
-| `read-injection-scanner.js` | PostToolUse | Prompt injection in what Read/WebFetch/WebSearch returned. Advisory — by PostToolUse the content is already in context, so it labels rather than blocks. |
-| `stop-verify.js` | Stop | The model claiming it is done while ruff/mypy/pytest fail. Resolves tools from the project `.venv`, and scopes to files *this session* edited so a peer session's work is not reported as yours. |
-| `block-no-verify.js` | PreToolUse: Bash | `--no-verify` and `-c core.hooksPath=`. Without it every gate here is optional. |
-| `write-shrink-guard.js` | PreToolUse: Write | A Write that guts a curated file. |
-| `worktree-path-guard.js` | PreToolUse: Edit\|Write | Writes outside the worktree you are working in. |
-| `gateguard-pre-edit.js` + `gateguard-track-read.js` | PreToolUse / PostToolUse | Editing a file that has not been read. |
-
-Plus `config-protection.js`, `pre-bash-dev-server-block.js`, `pre-edit-backup.js`,
-`post-edit-combined.js`, `pre-compact.js`, `session-start.js`, `session-end.js`,
-`loop-runner.js`, `ralph-loop.js`.
-
-## The gates
-
-Four, and each of the first three exists because the previous one could be walked around.
-
-| Gate | Enforces |
+| Path | What it does |
 |---|---|
-| `.git/hooks/pre-commit` | 20 test files + doctor |
-| `.git/hooks/commit-msg` | a `fix:`/`feat:` commit carries a regression test |
-| `block-no-verify.js` | that the two above cannot be skipped |
-| `ship-gate.js` | what leaves: secrets, debug artifacts, untracked TODOs, vulnerable deps |
+| `CLAUDE.md` | Global instructions: test budget, push rule, style pointer |
+| `rules/ponytail.md` | How to code: the laziest solution that works |
+| `rules/engineering.md` | Minimal code, exhaustive checks; TDD order; commits |
+| `rules/security.md` | Sink table checked before every commit |
+| `rules/tool-routing.md` | gstack owns the verbs, ECC owns the nouns |
+| `rules/a3-lessons.md` | One line per mistake no check can catch (written by `/lesson`) |
+| `output-styles/ftitos.md` | Reply style: ponytail + caveman + ASD-STE100, STE wins a tie |
+| `skills/council/` | `/council diff\|plan\|decision`: blind multi-model review; `outside.sh` calls Codex, then Gemini, then Ollama |
+| `skills/brief/` | `/brief`: question the user until no open point is left, then write the branch brief |
+| `skills/lesson/` | `/lesson`: turn a corrected mistake into a test, lint rule or hook |
+| `hooks/a3hooks.py` | Hooks for A3 work, see below |
+| `hooks/test_a3hooks.py` | Self-check for `a3hooks.py` |
+| `settings.json` | Hook registration, permissions, plugins, model settings |
 
-`ship-gate.js` deliberately does not run the test suite or measure coverage. Those take
-minutes, and a gate that takes minutes is a gate people route around — which is exactly
-why the third gate had to exist.
+## a3hooks.py
+
+One Python file, no dependencies: nine hooks across five events. A crash exits 0, so a hook
+bug never blocks a session.
+
+| Event | Hook | Stops |
+|---|---|---|
+| PreToolUse Bash | `bash-guard` | `SKIP=` commits, force-push to main, `sed -i` inside A3 |
+| PreToolUse Edit/Write | `scope-guard` | An A3 edit with no brief, an open brief question, or a path outside scope |
+| SessionStart / PostCompact | `session-start`, `post-compact` | Losing the brief and the last hand-over after compaction or `/clear` |
+| UserPromptSubmit / Stop | `doubt-inject`, `doubt-check` | An answer to "are you sure?" that opened nothing |
+| Stop | `gate` | Ending the turn while ruff, the touched tests or the fast set are red |
+| Stop | `speedbump` | A branch over 800 lines or 3 days from main, once per session |
+| Stop | `autopush` | Unpushed work: pushes the branch every 30 min, never main, never force |
+
+The A3 checkout defaults to `~/Desktop/A3-core`. Set `A3_REPO` to change it. Outside an A3
+checkout only `bash-guard` and the doubt check act.
 
 ## Install
 
-```bash
-git clone https://github.com/nassimbf/ftitos-claude-code.git
-cd ftitos-claude-code
-./install.sh --dry-run   # what would change, and why
-./install.sh             # apply; backs up anything it overwrites
-node scripts/doctor.js
-```
+1. Back up the current setup: `cp -R ~/.claude ~/.claude-backup-$(date +%Y%m%d)`.
+2. Install ECC: `npx ecc-universal@2.2.1 install --target claude --profile core --enable-hooks`.
+3. Install gstack: `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`.
+4. In Claude Code, add the marketplaces and plugins listed under `extraKnownMarketplaces`
+   and `enabledPlugins` in `claude/settings.json`.
+5. Copy this repo's files over: `cp -R claude/. ~/.claude/`. This replaces your
+   `settings.json` and `CLAUDE.md`; merge by hand if you keep your own.
+6. Run the self-check: `/usr/bin/python3 -I ~/.claude/hooks/test_a3hooks.py`.
+   It prints `a3hooks self-check: all passed`.
 
-The installer distinguishes `SKIP (identical)` from `WOULD UPDATE (stale)`, so a hook
-fixed here actually reaches `~/.claude`, and running it twice is a no-op. It also removes
-files it previously installed and no longer ships — and only those, never yours.
+`settings.json` here is sanitized: machine paths became `$HOME` or `~`, and the
+machine-specific `autoMode` and `statusLine` blocks are removed. The ECC hook commands
+fall back to `~/.claude` to find ECC.
 
-**Two skills need a build.** `browse` and `qa` drive a real browser through a compiled
-binary that is not committed (~61 MB). If `bun` is available the installer builds it; if
-the build fails or `bun` is missing, those two skills are **skipped with a message** rather
-than installed pointing at a missing executable. Everything else installs either way, and
-`doctor` stays clean. To get them, run `bun install` in `skills/browse/` first, then
-re-run `./install.sh`.
+## Update this repo
 
-`doctor` exits non-zero on duplicate hook registrations, hooks pointing at missing
-scripts, repo/install version drift, and an always-on budget over 8,000 tokens.
-
-## Agents
-
-Fourteen. Eight generic — `code-reviewer`, `debugger`, `plan-checker`, `security-auditor`,
-`silent-failure-hunter`, `verifier`, `python-reviewer`, `opensource-sanitizer` — and six
-matched to the stack this is used on: `fastapi-reviewer`, `database-reviewer`,
-`typescript-reviewer`, `react-reviewer`, `rag-pipeline-reviewer`, `tdd-guide`. A generic
-reviewer catches generic bugs.
-
-There is no count cap. The always-on token budget decides, measured per file against a
-recorded baseline by `scripts/ci/always-on-budget.js`.
-
-## Development
-
-```bash
-node tests/run-all.js
-node scripts/doctor.js
-./install.sh --dry-run
-```
-
-Conventions: zero external dependencies, Node built-ins only. Every hook gets a test
-written before the script. Removals go to `.archive/`, never `rm`.
-
-## Provenance
-
-Parts are vendored or ported from `open-gsd/gsd-core`, `affaan-m/ecc` and
-`garrytan/gstack`, all MIT. See [NOTICE](NOTICE).
-
-[VENDOR-MINING.md](VENDOR-MINING.md) records the evaluation of those and ten other
-projects, read from source rather than from their READMEs — including what was
-deliberately not taken, and six earlier conclusions that turned out to be wrong.
-
-## License
-
-MIT
+Copy the same files from `~/.claude/` into `claude/`, run the self-check, and scan the
+diff for secrets and client data before you push. The repo is public.
